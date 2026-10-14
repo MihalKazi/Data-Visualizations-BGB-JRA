@@ -61,6 +61,6 @@ The layout switches to a vertical one below 620px width. On phones, tapping a ci
 
 ## Data and privacy
 
-The workbooks and generated pages contain real people's names and profile links, so they are kept out of this repo (see `.gitignore`). Publish the generated pages only after an editorial decision.
+The generated pages in `embeds/` are the verified report and are included. The source workbooks (`*.xlsx`) carry real people's names and profile links and are kept out of this repo (see `.gitignore`).
 
 How a copied text is defined: used by at least 5 comments and at least 40 characters long. Accounts are identified by profile link, not by display name.
