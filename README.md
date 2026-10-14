@@ -29,7 +29,7 @@ python3 build_full.py
 
 The script expects `BGB Chief .xlsx` and `CiB Network BGB.xlsx` next to it. Neither file is in this repo. The output goes to `embeds/`:
 
-- `network-full-all-lines.html`: every account's lines to every cluster it posted in
+- `index.html`: every account's lines to every cluster it posted in
 - `network-full.html`: one line per account, to its main cluster
 
 ## Embed
@@ -37,7 +37,7 @@ The script expects `BGB Chief .xlsx` and `CiB Network BGB.xlsx` next to it. Neit
 Each output is a single self-contained HTML file.
 
 ```html
-<iframe src="network-full-all-lines.html" width="100%" height="1500"
+<iframe src="index.html" width="100%" height="1500"
         style="border:0" loading="lazy" title="BGB comment network"></iframe>
 ```
 

@@ -391,7 +391,7 @@ if __name__ == '__main__':
     template = open(os.path.join(HERE, 'src', 'full.template.html'), encoding='utf-8').read()
     os.makedirs(os.path.join(HERE, 'embeds'), exist_ok=True)
     # the same graph twice, differing only in how the lines between clusters are drawn, so the two can be compared
-    for name, lines in (('network-full.html', 'single'), ('network-full-all-lines.html', 'all')):
+    for name, lines in (('network-full.html', 'single'), ('index.html', 'all')):
         data['lines'] = lines
         payload = json.dumps(data, ensure_ascii=False, separators=(',', ':')).replace('</', '<\\/')
         out = os.path.join(HERE, 'embeds', name)
