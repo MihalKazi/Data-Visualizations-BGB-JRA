@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Copied comments network</title>
+<title>Tracing the Coordinated Network Hour by Hour</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Bengali:wght@400;600;700&display=swap">
@@ -61,8 +61,8 @@
   /* lines: thin and faint, spread over several layers so crossings add up to a dark bundle */
   .edges { fill: none; stroke-width: 0.5; stroke-opacity: var(--edge-alpha); }
   /* a line is one dash as long as the longest line; sliding the dash in makes every line grow from its start */
-  .web { stroke-dasharray: var(--web) var(--web); transition: stroke-dashoffset 1500ms cubic-bezier(.45, 0, .85, .55), opacity 200ms linear; }
-  .fan { stroke-dasharray: var(--fan) var(--fan); transition: stroke-dashoffset 2600ms cubic-bezier(.45, 0, .7, .7), opacity 200ms linear; }
+  .web { stroke-dasharray: var(--web) var(--web); transition: stroke-dashoffset 450ms cubic-bezier(.45, 0, .85, .55), opacity 200ms linear; }
+  .fan { stroke-dasharray: var(--fan) var(--fan); transition: stroke-dashoffset 800ms cubic-bezier(.45, 0, .7, .7), opacity 200ms linear; }
   .no-web .web { stroke-dashoffset: var(--web); }
   .no-fan .fan { stroke-dashoffset: var(--fan); }
   .halo { fill-opacity: var(--halo); }
@@ -109,7 +109,7 @@
     position: absolute; z-index: 4; pointer-events: none; width: min(264px, calc(100% - 24px));
     background: var(--paper); border: 1px solid var(--rule); border-top: 3px solid var(--tone); border-radius: 2px 2px 4px 4px;
     padding: 12px 16px 14px; box-shadow: var(--card-shadow);
-    opacity: 0; transform: scale(0.86); transition: opacity 240ms ease, transform 440ms cubic-bezier(.2, 1.3, .3, 1);
+    opacity: 0; transform: scale(0.86); transition: opacity 550ms ease, transform 800ms cubic-bezier(.2, 1.3, .3, 1);
   }
   .card.open { opacity: 1; transform: none; }
   .tone-BGB { --tone: var(--bgb); } .tone-JRA { --tone: var(--jra); } .tone-both { --tone: var(--both); }
@@ -289,7 +289,7 @@ function render(isPortrait) {
   // ---- what the picture is: headline, the finding in one line, colour key
   let y = 26;
   y += block(gText, 'head', view.w / 2, y, wrap(HEADLINE, Math.floor((view.w - 24) / 10.8)), 24, 'middle');
-  y += block(gText, 'dek', view.w / 2, y - 2, wrap(STORY.dek, Math.floor((view.w - 24) / 6.5)), 16, 'middle') + 14;
+  y += 12;
   const widths = KEY.map(k => 22 + (k[1] + k[2]).length * 6.1), total = widths.reduce((s, w) => s + w, 0) + 26 * (KEY.length - 1);
   const row = total <= view.w - 16;
   let x = row ? (view.w - total) / 2 : 12;
@@ -583,7 +583,7 @@ async function play() {
   let minute = 0, next = 0, count = 0;
   // `atLeast` stretches a stretch of time so the panel that is open can be read while the comments keep arriving
   const advance = (to, atLeast) => new Promise(done => {
-    const from = minute, ms = Math.max(900, atLeast || 0, Math.min(4200, (to - from) / span * 15000)), began = performance.now();
+    const from = minute, ms = Math.max(250, atLeast || 0, Math.min(1300, (to - from) / span * 4500)), began = performance.now();
     (function frame(now) {
       if (run !== id) return done(false);
       const t = Math.min(1, (now - began) / ms);
@@ -602,7 +602,11 @@ async function play() {
     })(began);
   });
   // long enough to read the panels
-  const reading = c => 1700 + 32 * c.cards.reduce((n, k) => n + [k.eyebrow, k.figure, k.unit, k.title, k.body, k.quote, k.cite].join('').length, 0);
+  const reading = c => {
+    const ms = Math.min(7000, 2200 + 33 * c.cards.reduce((n, k) => n + [k.eyebrow, k.figure, k.unit, k.title, k.body, k.quote, k.cite].join('').length, 0));
+    const k = timed.indexOf(c);
+    return ms * (k >= 0 && k < 2 ? 0.6 : 0.38);   // seven boxes follow the JRA post going up, so each one is kept shorter
+  };
 
   // a panel stays open until the next one takes its place; the clock never stops
   const swap = c => {
@@ -623,7 +627,7 @@ async function play() {
   for (const c of after) {
     if (c.reveal === 'edges') {   // the lines draw themselves: inside each cluster first, then out across the graph
       svg.classList.remove('no-edges', 'no-web');
-      setTimeout(() => { if (run === id) svg.classList.remove('no-fan'); }, 1300);
+      setTimeout(() => { if (run === id) svg.classList.remove('no-fan'); }, 400);
     }
     if (c.spot && c.spot.text != null) light(new Set(members[c.spot.text]), null, c.spot.text);
     else if (c.spot) light(new Set(accounts.filter(a => a.color === c.spot.color)));

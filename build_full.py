@@ -320,7 +320,7 @@ def tell(accounts, texts, posted, minutes):
             **cluster(t), 'tone': 'both', 'eyebrow': 'Shared text', 'figure': str(len(mixed)), 'unit': 'texts turn up under both posts',
             'body': f"This one was pasted by {t['on']['BGB']} accounts under the BGB post and {t['on']['JRA']} under the JRA post."}]})
     return {
-        'headline': f"How {len(texts)} word-for-word comments flooded two Facebook posts",
+        'headline': "Tracing the Coordinated Network Hour by Hour",
         'dek': f"Under the BGB post, {once} of {len(bgb)} accounts pasted a comment once. "
                f"Under the JRA post, {len(heavy)} accounts wrote {share}% of the copied comments.",
         'chapters': chapters,
