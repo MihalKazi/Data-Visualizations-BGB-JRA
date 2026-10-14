@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Copied comments network</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #ffffff;
+    --ink: #111314;
+    --ink-2: #4d5557;
+    --muted: #8a9294;
+    --border: rgba(17,19,20,0.12);
+    --bgb: #6b7b7d;
+    --jra: #74060c;
+    --both: #111314;
+    --edge-bgb: #3b4648;
+    --edge-jra: #5a1216;
+    --edge-both: #111314;
+    --edge-alpha: 0.3;
+    --tip-bg: #ffffff;
+    --tip-shadow: 0 6px 22px rgba(0,0,0,0.16);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface: #141515;
+    --ink: #f1f2f2;
+    --ink-2: #c1c7c8;
+    --muted: #8a9294;
+    --border: rgba(255,255,255,0.14);
+    --bgb: #93a2a4;
+    --jra: #c8373d;
+    --both: #f1f2f2;
+    --edge-bgb: #aab6b8;
+    --edge-jra: #d8666b;
+    --edge-both: #f1f2f2;
+    --edge-alpha: 0.24;
+    --tip-bg: #222424;
+    --tip-shadow: 0 6px 22px rgba(0,0,0,0.6);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--surface); }
+  body { font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans Bengali", sans-serif; color: var(--ink); -webkit-text-size-adjust: 100%; }
+  .chart { position: relative; max-width: 1100px; margin: 0 auto; }
+  svg { display: block; width: 100%; height: auto; touch-action: pan-y; }
+
+  .edges { fill: none; stroke-width: 0.5; opacity: var(--edge-alpha); }
+  .e-BGB { stroke: var(--edge-bgb); } .e-JRA { stroke: var(--edge-jra); } .e-both { stroke: var(--edge-both); }
+  .focus-edges { fill: none; stroke-width: 0.9; opacity: 0.7; }
+  .node { stroke: var(--surface); stroke-width: 1.4; }
+  .c-BGB { fill: var(--bgb); } .c-JRA { fill: var(--jra); } .c-both { fill: var(--both); }
+  .node.hot { stroke: var(--ink); stroke-width: 2; }
+  .dim { opacity: 0.14; }
+  .faded { opacity: 0.04 !important; }
+  .node, .edges, .name { transition: opacity 120ms linear; }
+
+  .post, .cap-n, .cap-q { paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+  .post { font-size: 13px; font-weight: 700; fill: var(--ink); text-anchor: middle; }
+  .cap-n { font-size: 11px; font-weight: 600; fill: var(--ink); text-anchor: middle; }
+  .cap-q { font-size: 10.5px; fill: var(--ink-2); text-anchor: middle; font-style: italic; }
+  .name { font-size: 10.5px; font-weight: 500; fill: var(--ink); paint-order: stroke; stroke: var(--surface); stroke-width: 3.2px; stroke-linejoin: round; pointer-events: none; }
+  .leader { stroke: var(--muted); stroke-width: 0.7; fill: none; pointer-events: none; }
+  .note { font-size: 10px; fill: var(--muted); text-anchor: middle; }
+
+  .tip {
+    position: absolute; z-index: 5; pointer-events: none; display: none;
+    width: max-content; max-width: min(290px, calc(100% - 16px));
+    background: var(--tip-bg); color: var(--ink); border: 1px solid var(--border);
+    border-radius: 8px; box-shadow: var(--tip-shadow); padding: 10px 12px; font-size: 12.5px; line-height: 1.4;
+  }
+  .tip strong { display: block; font-size: 13.5px; }
+  .tip .sub { color: var(--ink-2); }
+  .tip .link { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .tip .when { font-weight: 600; }
+  .tip .quote { color: var(--ink-2); margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+</style>
+</head>
+<body>
+<div class="chart" id="chart">
+  <svg id="svg" role="img"></svg>
+  <div class="tip" id="tip" role="status"></div>
+</div>
+
+<script>
+const DATA = /*DATA*/;
+
+// light by default so the embed matches most news pages; ?theme=dark|auto overrides
+(function () {
+  const t = new URLSearchParams(location.search).get('theme');
+  const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+})();
+
+const NS = 'http://www.w3.org/2000/svg';
+const $ = id => document.getElementById(id);
+const el = (tag, attrs, parent, text) => {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (text != null) n.textContent = text;
+  if (parent) parent.appendChild(n);
+  return n;
+};
+const h = (tag, cls, text, parent) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  if (parent) parent.appendChild(n);
+  return n;
+};
+const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+
+const POSTS = { BGB: 'Official BGB post', JRA: 'JRA post' };
+const textById = Object.fromEntries(DATA.texts.map(t => [t.id, t]));
+const profiles = DATA.profiles.map(p => ({
+  ...p,
+  r: 3.6 + 2.5 * Math.sqrt(p.total),
+  color: p.posts.length > 1 ? 'both' : p.posts[0],
+  multi: p.links.length > 1
+}));
+// names are printed for the heavy repeaters and for profiles that tie two comments together
+for (const p of profiles) p.named = p.total >= 6 || p.multi;
+const LABEL_SIDE = rank => rank === 3 ? -1 : 1;
+
+const svg = $('svg');
+svg.setAttribute('aria-label', profiles.length + ' Facebook profiles, linked when they posted the identical comment under the ' +
+  POSTS.BGB + ' or the ' + POSTS.JRA + '. Bigger circles posted more comments.');
+
+// ---- layout: one 440x450 block per post; side by side when wide, stacked when narrow
+const BLOCK = { centers: [[220, 150], [112, 345], [328, 345]], w: 440, h: 450 };
+let clusters = [], view = { w: 920, h: 480 }, offsets = {}, portrait = null;
+
+function rng(seed) {
+  return () => {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function layout(isPortrait) {
+  view = isPortrait ? { w: 440, h: 950 } : { w: 920, h: 480 };
+  offsets = { BGB: [0, 0], JRA: isPortrait ? [0, 470] : [480, 0] };
+  clusters = DATA.texts.map(t => {
+    const [bx, by] = BLOCK.centers[t.rank - 1], [ox, oy] = offsets[t.post];
+    return { ...t, x: bx + ox, y: by + oy, members: [] };
+  });
+  const at = Object.fromEntries(clusters.map(c => [c.id, c]));
+  const rand = rng(11);
+
+  for (const p of profiles) {
+    const cs = p.links.map(l => at[l.t]);
+    cs.forEach(c => c.members.push(p));
+    p.tx = cs.reduce((s, c) => s + c.x, 0) / cs.length;
+    p.ty = cs.reduce((s, c) => s + c.y, 0) / cs.length;
+    // heavy repeaters drift to the side of the cluster where their names are printed
+    if (p.named && !p.multi) p.tx += LABEL_SIDE(cs[0].rank) * 30;
+    const a = rand() * Math.PI * 2, d = rand() * 70;
+    p.x = p.tx + Math.cos(a) * d; p.y = p.ty + Math.sin(a) * d;
+  }
+  // pull every profile to its comment's centre, then push overlapping circles apart: a packed cluster
+  const STEPS = 460;
+  for (let s = 0; s < STEPS; s++) {
+    const pull = s < STEPS - 40 ? 0.06 : 0;
+    for (const p of profiles) { p.x += (p.tx - p.x) * pull; p.y += (p.ty - p.y) * pull; }
+    for (let pass = 0; pass < 2; pass++) {
+      for (let i = 0; i < profiles.length; i++) {
+        const a = profiles[i];
+        for (let j = i + 1; j < profiles.length; j++) {
+          const b = profiles[j];
+          let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01;
+          const min = a.r + b.r + 2.6;
+          if (d < min) {
+            const k = (min - d) / d / 2; dx *= k; dy *= k;
+            a.x -= dx; a.y -= dy; b.x += dx; b.y += dy;
+          }
+        }
+      }
+    }
+  }
+  for (const c of clusters) {
+    const own = c.members.filter(p => !p.multi);
+    c.top = Math.min(...own.map(p => p.y - p.r));
+    c.bottom = Math.max(...own.map(p => p.y + p.r));
+    c.left = Math.min(...own.map(p => p.x - p.r));
+    c.right = Math.max(...own.map(p => p.x + p.r));
+  }
+}
+
+// every pair of profiles that posted the same comment is joined by one arc
+function arc(a, b) {
+  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, k = 0.3;
+  const cx = mx - (b.y - a.y) * k, cy = my + (b.x - a.x) * k;
+  return `M${a.x.toFixed(1)},${a.y.toFixed(1)}Q${cx.toFixed(1)},${cy.toFixed(1)} ${b.x.toFixed(1)},${b.y.toFixed(1)}`;
+}
+function edgeClass(a, b, post) { return a.color === 'both' || b.color === 'both' ? 'both' : post; }
+
+let gFocus, baseEdges = [];
+function render() {
+  svg.textContent = '';
+  svg.setAttribute('viewBox', `0 0 ${view.w} ${view.h}`);
+  const gEdge = el('g', {}, svg);
+  gFocus = el('g', {}, svg);
+  const gNode = el('g', {}, svg), gText = el('g', {}, svg);
+
+  const paths = { BGB: '', JRA: '', both: '' };
+  for (const c of clusters) {
+    for (let i = 0; i < c.members.length; i++) {
+      for (let j = i + 1; j < c.members.length; j++) paths[edgeClass(c.members[i], c.members[j], c.post)] += arc(c.members[i], c.members[j]);
+    }
+  }
+  baseEdges = ['BGB', 'JRA', 'both'].map(k => el('path', { class: 'edges e-' + k, d: paths[k] }, gEdge));
+
+  // big circles first so small ones are never hidden under them
+  for (const p of [...profiles].sort((a, b) => b.r - a.r)) p.dot = el('circle', { class: 'node c-' + p.color, cx: p.x, cy: p.y, r: p.r }, gNode);
+
+  for (const post in POSTS) {
+    const [ox, oy] = offsets[post];
+    el('text', { class: 'post', x: ox + BLOCK.w / 2, y: oy + 22 }, gText, POSTS[post]);
+  }
+  for (const c of clusters) {
+    const above = c.rank === 1, y = above ? c.top - 26 : c.bottom + 18;
+    el('text', { class: 'cap-n', x: c.x, y }, gText, plural(c.profiles, 'profile') + ' · ' + plural(c.comments, 'comment'));
+    el('text', { class: 'cap-q', x: c.x, y: y + 14 }, gText, '“' + c.short + '”');
+  }
+  for (const p of profiles) p.label = p.leader = null;
+  // repeaters inside a cluster: names stacked in a column beside it, each tied to its circle by a leader
+  for (const c of clusters) {
+    const side = LABEL_SIDE(c.rank), x = side > 0 ? c.right + 12 : c.left - 12;
+    const named = c.members.filter(p => p.named && !p.multi).sort((a, b) => a.y - b.y);
+    let y = -Infinity;
+    const ys = named.map(p => (y = Math.max(p.y, y + 14)));
+    const shift = named.length ? (named.reduce((s, p) => s + p.y, 0) - ys.reduce((s, v) => s + v, 0)) / named.length : 0;
+    named.forEach((p, i) => {
+      const ly = ys[i] + shift;
+      p.leader = el('line', { class: 'leader', x1: p.x + side * p.r, y1: p.y, x2: x - side * 3, y2: ly }, gText);
+      p.label = el('text', { class: 'name', x, y: ly + 3.6, 'text-anchor': side > 0 ? 'start' : 'end' }, gText, p.name);
+    });
+  }
+  for (const p of profiles.filter(p => p.multi)) {
+    const [ox] = offsets[p.posts[0]];
+    const right = p.x >= ox + BLOCK.w / 2, w = p.name.length * 6;
+    const start = right ? p.x + p.r + 4 + w < view.w : p.x - p.r - 4 - w < 0;
+    p.label = el('text', { class: 'name', x: start ? p.x + p.r + 4 : p.x - p.r - 4, y: p.y + 3.6, 'text-anchor': start ? 'start' : 'end' }, gText, p.name);
+  }
+  el('text', { class: 'note', x: view.w / 2, y: view.h - 8 }, gText,
+    'Circle = one profile · bigger = more comments · line = same comment text');
+}
+
+// ---- hover / tap: nearest circle within reach, so the target is bigger than the dot
+const tip = $('tip'), chart = $('chart');
+let current = null;
+
+function pick(evt) {
+  const box = svg.getBoundingClientRect(), k = view.w / box.width;
+  const x = (evt.clientX - box.left) * k, y = (evt.clientY - box.top) * k;
+  let best = null, bestD = 8 * k;
+  for (const p of profiles) {
+    const d = Math.hypot(p.x - x, p.y - y) - p.r;
+    if (d < bestD) { best = p; bestD = d; }
+  }
+  return best;
+}
+
+function focus(p) {
+  gFocus.textContent = '';
+  const peers = new Set(p ? [p] : []);
+  if (p) {
+    for (const l of p.links) {
+      const c = clusters.find(c => c.id === l.t);
+      let d = '';
+      for (const q of c.members) if (q !== p) { peers.add(q); d += arc(p, q); }
+      el('path', { class: 'focus-edges e-' + (p.color === 'both' ? 'both' : c.post), d }, gFocus);
+    }
+  }
+  for (const e of baseEdges) e.classList.toggle('faded', !!p);
+  for (const q of profiles) {
+    q.dot.classList.toggle('dim', !!p && !peers.has(q));
+    q.dot.classList.toggle('hot', q === p);
+    for (const t of [q.label, q.leader]) if (t) t.classList.toggle('dim', !!p && !peers.has(q));
+  }
+}
+
+function fillTip(p) {
+  tip.textContent = '';
+  h('strong', '', p.name, tip);
+  h('div', 'sub', plural(p.total, 'comment') + ' · ' + p.posts.map(x => POSTS[x]).join(' and '), tip);
+  for (const l of p.links) {
+    const box = h('div', 'link', null, tip);
+    h('div', 'when', l.n > 1 ? 'Posted ' + l.n + ' times, ' + l.first + ' to ' + l.last : 'Posted once, ' + l.first, box);
+    h('div', 'quote', '“' + textById[l.t].en + '”', box);
+  }
+}
+
+function showTip(p, evt) {
+  if (p !== current) { current = p; fillTip(p); focus(p); }
+  tip.style.display = 'block';
+  const box = chart.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
+  let x = evt.clientX - box.left + 14, y = evt.clientY - box.top + 14;
+  if (x + tw > box.width - 4) x = evt.clientX - box.left - tw - 14;
+  if (y + th > box.height - 4) y = evt.clientY - box.top - th - 14;
+  tip.style.left = Math.max(4, x) + 'px';
+  tip.style.top = Math.max(4, y) + 'px';
+}
+function hideTip() {
+  if (!current) return;
+  current = null; tip.style.display = 'none'; focus(null);
+}
+svg.addEventListener('pointermove', e => { const p = pick(e); p ? showTip(p, e) : hideTip(); svg.style.cursor = p ? 'pointer' : ''; });
+svg.addEventListener('pointerdown', e => { const p = pick(e); p ? showTip(p, e) : hideTip(); });
+svg.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hideTip(); });
+
+// ---- responsive: re-run the layout only when crossing the breakpoint; report height to the host page
+function fit() {
+  const p = chart.clientWidth < 620;
+  if (p !== portrait) { portrait = p; current = null; tip.style.display = 'none'; layout(p); render(); }
+  if (window.parent !== window) window.parent.postMessage({ type: 'embed-height', id: 'cib-network', height: document.documentElement.scrollHeight }, '*');
+}
+addEventListener('resize', fit);
+fit();
+</script>
+</body>
+</html>
