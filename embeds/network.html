@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Copied comments network</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #ffffff;
+    --ink: #111314;
+    --ink-2: #4d5557;
+    --muted: #8a9294;
+    --border: rgba(17,19,20,0.12);
+    --bgb: #6b7b7d;
+    --jra: #74060c;
+    --both: #111314;
+    --edge-bgb: #3b4648;
+    --edge-jra: #5a1216;
+    --edge-both: #111314;
+    --edge-alpha: 0.3;
+    --tip-bg: #ffffff;
+    --tip-shadow: 0 6px 22px rgba(0,0,0,0.16);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface: #141515;
+    --ink: #f1f2f2;
+    --ink-2: #c1c7c8;
+    --muted: #8a9294;
+    --border: rgba(255,255,255,0.14);
+    --bgb: #93a2a4;
+    --jra: #c8373d;
+    --both: #f1f2f2;
+    --edge-bgb: #aab6b8;
+    --edge-jra: #d8666b;
+    --edge-both: #f1f2f2;
+    --edge-alpha: 0.24;
+    --tip-bg: #222424;
+    --tip-shadow: 0 6px 22px rgba(0,0,0,0.6);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--surface); }
+  body { font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans Bengali", sans-serif; color: var(--ink); -webkit-text-size-adjust: 100%; }
+  .chart { position: relative; max-width: 1100px; margin: 0 auto; }
+  svg { display: block; width: 100%; height: auto; touch-action: pan-y; }
+
+  .edges { fill: none; stroke-width: 0.5; opacity: var(--edge-alpha); }
+  .e-BGB { stroke: var(--edge-bgb); } .e-JRA { stroke: var(--edge-jra); } .e-both { stroke: var(--edge-both); }
+  .focus-edges { fill: none; stroke-width: 0.9; opacity: 0.7; }
+  .node { stroke: var(--surface); stroke-width: 1.4; }
+  .c-BGB { fill: var(--bgb); } .c-JRA { fill: var(--jra); } .c-both { fill: var(--both); }
+  .node.hot { stroke: var(--ink); stroke-width: 2; }
+  .dim { opacity: 0.14; }
+  .faded { opacity: 0.04 !important; }
+  .node, .edges, .name { transition: opacity 120ms linear; }
+
+  .post, .cap-n, .cap-q { paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+  .post { font-size: 13px; font-weight: 700; fill: var(--ink); text-anchor: middle; }
+  .cap-n { font-size: 11px; font-weight: 600; fill: var(--ink); text-anchor: middle; }
+  .cap-q { font-size: 10.5px; fill: var(--ink-2); text-anchor: middle; font-style: italic; }
+  .name { font-size: 10.5px; font-weight: 500; fill: var(--ink); paint-order: stroke; stroke: var(--surface); stroke-width: 3.2px; stroke-linejoin: round; pointer-events: none; }
+  .leader { stroke: var(--muted); stroke-width: 0.7; fill: none; pointer-events: none; }
+  .note { font-size: 10px; fill: var(--muted); text-anchor: middle; }
+
+  .tip {
+    position: absolute; z-index: 5; pointer-events: none; display: none;
+    width: max-content; max-width: min(290px, calc(100% - 16px));
+    background: var(--tip-bg); color: var(--ink); border: 1px solid var(--border);
+    border-radius: 8px; box-shadow: var(--tip-shadow); padding: 10px 12px; font-size: 12.5px; line-height: 1.4;
+  }
+  .tip strong { display: block; font-size: 13.5px; }
+  .tip .sub { color: var(--ink-2); }
+  .tip .link { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .tip .when { font-weight: 600; }
+  .tip .quote { color: var(--ink-2); margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+</style>
+</head>
+<body>
+<div class="chart" id="chart">
+  <svg id="svg" role="img"></svg>
+  <div class="tip" id="tip" role="status"></div>
+</div>
+
+<script>
+const DATA = {"texts":[{"id":"B1","post":"BGB","rank":1,"kind":"hub","bn":"বিজিবির মহাপরিচালকের দক্ষ নেতৃত্বে বাহিনীর পেশাদারিত্ব, শৃঙ্খলা ও জনকল্যাণমূলক কার্যক্রম বর্তমানে দৃশ্যমান।  উদ্দেশ্য প্রণোদিত ভিত্তিহীন সংবাদের তীব্র প্রতিবাদ জানাই।","en":"Under the skilled leadership of the Director General of BGB, the force's professionalism, discipline, and public welfare activities are clearly visible today. I strongly protest against these motivated and baseless news reports.","short":"Under the skilled leadership…","comments":76,"variants":3,"profiles":76},{"id":"B2","post":"BGB","rank":2,"kind":"hub","bn":"উদ্দেশ্য প্রণোদিত ভিত্তিহীন বানোয়াট প্রতিবেদনের তীব্র নিন্দা জানাই , বর্তমান বিজিবি মহাপরিচালক স্যার এ বাহিনীর সর্বকালের সেরা মহাপরিচালক ❤️❤️","en":"I strongly condemn this motivated, baseless, and fabricated report; the current Director General of BGB is the best DG this force has ever had. ❤️❤️","short":"I strongly condemn this…","comments":42,"variants":0,"profiles":42},{"id":"B3","post":"BGB","rank":3,"kind":"hub","bn":"বিজিবি মহাপরিচালক একজন নিতি নিষ্ঠাবান ব্যক্তি তিনি যেভাবে বিজিবিকে নিয়ে মহা পরিকল্পনা গ্রহণ করেছেন তা অত্যন্ত প্রশংসার , এমন খবর ছড়ানোর তীব্র  নিন্দা ও প্রতিবাদ জানাই।","en":"The Director General of BGB is a person of high integrity and dedication. His comprehensive master plan for BGB is highly commendable; I strongly condemn and protest the dissemination of such news.","short":"The Director General of BGB is…","comments":37,"variants":1,"profiles":37},{"id":"J1","post":"JRA","rank":1,"kind":"hub","bn":"বিজিবি সব সময়ই মানবিকতার সাথে রয়েছে, মহাপরিচালক স্যারের নির্দেশনায় বিজিবি অত্যন্ত সুশৃঙ্খলভাবে দেশের সেবা করে যাচ্ছে।","en":"BGB has always stood firmly with humanitarian values. Under the visionary guidance of the Director General, the force continues to serve the nation with utmost discipline and dedication.","short":"BGB has always stood firmly…","comments":92,"variants":0,"profiles":39},{"id":"J2","post":"JRA","rank":2,"kind":"hub","bn":"জুলাই গণঅভ্যুত্থানের কঠিন সময়ে বিজিবির দায়িত্বশীলতা, সংযম ও মানবিক ভূমিকা সত্যিই প্রশংসনীয়। মানুষের পাশে থাকার এই মানবিকতাই বিজিবির প্রতি আস্থা ও শ্রদ্ধা আরও বাড়ায়।","en":"During the critical period of the July mass uprising, BGB's sense of responsibility, restraint, and humanitarian commitment were truly praiseworthy. Standing by the people in their time of need reinforces our trust and deep respect for the force.","short":"During the critical period of…","comments":38,"variants":0,"profiles":22},{"id":"J3","post":"JRA","rank":3,"kind":"hub","bn":"বিজিবির দায়িত্ব সীমান্ত পাহারা দেওয়া, তবে দেশের মানুষের প্রতি মানবিক দায়িত্বও অত্যন্ত গুরুত্বপূর্ণ। বিপদের সময়ে একজন অসহায় মানুষের পাশে দাঁড়ানো, তাকে আশ্রয় দেওয়া এবং প্রয়োজনীয় সেবা নিশ্চিত করার ঘটনা সাধারণ মানুষের কাছে বাহিনীর মানবিক ভাবমূর্তি আরও শক্তিশালী করে। এমন ইতিবাচক ও মানবিক কর্মকাণ্ডের মাধ্যমে বিজিবি ও জনগণের মধ্যে পারস্পরিক আস্থা আরও গভীর হোক—এটাই প্রত্যাশা।","en":"While safeguarding borders is BGB's core mandate, upholding humanitarian duty toward citizens is equally vital. Supporting vulnerable individuals, offering shelter, and delivering essential aid reinforce the force's compassionate identity. May such endeavors continue to foster deep mutual trust between BGB and the public.","short":"While safeguarding borders is…","comments":37,"variants":0,"profiles":5}],"profiles":[{"id":"p0","kind":"profile","name":"Sushanto Sarker","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 7:13:54 PM","last":"2 Oct, 7:13:54 PM"}],"total":1,"posts":["BGB"]},{"id":"p1","kind":"profile","name":"Osman Ali","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:13:21 PM","last":"2 Oct, 9:13:21 PM"}],"total":1,"posts":["BGB"]},{"id":"p2","kind":"profile","name":"MD Wasime Akram","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 12:08:08 AM","last":"3 Oct, 12:08:08 AM"}],"total":1,"posts":["BGB"]},{"id":"p3","kind":"profile","name":"Rasel Rayhan","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 10:43:08 AM","last":"3 Oct, 10:43:08 AM"}],"total":1,"posts":["BGB"]},{"id":"p4","kind":"profile","name":"Didarul Islam Suman","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 6:51:22 AM","last":"3 Oct, 6:51:22 AM"}],"total":1,"posts":["BGB"]},{"id":"p5","kind":"profile","name":"Nurul Islam","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 10:17:15 AM","last":"3 Oct, 10:17:15 AM"}],"total":1,"posts":["BGB"]},{"id":"p6","kind":"profile","name":"Md Nazrul Islam","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 10:50:03 PM","last":"2 Oct, 10:50:03 PM"}],"total":1,"posts":["BGB"]},{"id":"p7","kind":"profile","name":"Asif Ahmed","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 11:44:38 PM","last":"2 Oct, 11:44:38 PM"}],"total":1,"posts":["BGB"]},{"id":"p8","kind":"profile","name":"Md Shajahan","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 8:03:28 PM","last":"2 Oct, 8:03:28 PM"}],"total":1,"posts":["BGB"]},{"id":"p9","kind":"profile","name":"Dulon Ropu Purkayastha","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:31:29 PM","last":"2 Oct, 9:31:29 PM"}],"total":1,"posts":["BGB"]},{"id":"p10","kind":"profile","name":"Jalil Ahmed","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 11:32:16 PM","last":"2 Oct, 11:32:16 PM"}],"total":1,"posts":["BGB"]},{"id":"p11","kind":"profile","name":"Anis Rahman","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:42:14 PM","last":"2 Oct, 9:42:14 PM"}],"total":1,"posts":["BGB"]},{"id":"p12","kind":"profile","name":"MD Shamsur Rahman","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:05:14 PM","last":"2 Oct, 9:05:14 PM"}],"total":1,"posts":["BGB"]},{"id":"p13","kind":"profile","name":"Ziaur Rahman","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:32:42 PM","last":"2 Oct, 9:32:42 PM"}],"total":1,"posts":["BGB"]},{"id":"p14","kind":"profile","name":"M G R Hasan","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 8:53:19 PM","last":"2 Oct, 8:53:19 PM"}],"total":1,"posts":["BGB"]},{"id":"p15","kind":"profile","name":"Mohammad Milon","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 6:58:52 AM","last":"3 Oct, 6:58:52 AM"}],"total":1,"posts":["BGB"]},{"id":"p16","kind":"profile","name":"Golam Ambia","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:24:08 PM","last":"2 Oct, 9:24:08 PM"}],"total":1,"posts":["BGB"]},{"id":"p17","kind":"profile","name":"Hasibur Rahman","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:12:04 PM","last":"2 Oct, 9:12:04 PM"}],"total":1,"posts":["BGB"]},{"id":"p18","kind":"profile","name":"MD Kamruzzaman","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 9:56:33 AM","last":"3 Oct, 9:56:33 AM"}],"total":1,"posts":["BGB"]},{"id":"p19","kind":"profile","name":"Jamal Uddin","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 9:17:41 AM","last":"3 Oct, 9:17:41 AM"}],"total":1,"posts":["BGB"]},{"id":"p20","kind":"profile","name":"MD Rony","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 8:48:36 PM","last":"2 Oct, 8:48:36 PM"}],"total":1,"posts":["BGB"]},{"id":"p21","kind":"profile","name":"MD Anowar Hossain","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 11:36:11 AM","last":"3 Oct, 11:36:11 AM"}],"total":1,"posts":["BGB"]},{"id":"p22","kind":"profile","name":"Riduan Khan","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 10:30:35 AM","last":"3 Oct, 10:30:35 AM"}],"total":1,"posts":["BGB"]},{"id":"p23","kind":"profile","name":"Md Ariful Islam","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 10:31:08 PM","last":"2 Oct, 10:31:08 PM"}],"total":1,"posts":["BGB"]},{"id":"p24","kind":"profile","name":"Tuhin Hasan","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 11:31:11 PM","last":"2 Oct, 11:31:11 PM"}],"total":1,"posts":["BGB"]},{"id":"p25","kind":"profile","name":"Md. Borhan","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 12:17:21 AM","last":"3 Oct, 12:17:21 AM"}],"total":1,"posts":["BGB"]},{"id":"p26","kind":"profile","name":"Nahid Ahammd","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 12:50:21 AM","last":"3 Oct, 12:50:21 AM"}],"total":1,"posts":["BGB"]},{"id":"p27","kind":"profile","name":"Ulla Miya","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 10:56:40 PM","last":"2 Oct, 10:56:40 PM"}],"total":1,"posts":["BGB"]},{"id":"p28","kind":"profile","name":"Rafi Rahman Raza","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 7:38:16 AM","last":"3 Oct, 7:38:16 AM"}],"total":1,"posts":["BGB"]},{"id":"p29","kind":"profile","name":"Sumaiya Akter","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:25:49 PM","last":"2 Oct, 9:25:49 PM"}],"total":1,"posts":["BGB"]},{"id":"p30","kind":"profile","name":"Md Jahangir Alam","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:26:52 PM","last":"2 Oct, 9:26:52 PM"}],"total":1,"posts":["BGB"]},{"id":"p31","kind":"profile","name":"Aimless Traveler","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:07:17 PM","last":"2 Oct, 9:07:17 PM"}],"total":1,"posts":["BGB"]},{"id":"p32","kind":"profile","name":"উগান্ডা থেকে","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:34:13 PM","last":"2 Oct, 9:34:13 PM"}],"total":1,"posts":["BGB"]},{"id":"p33","kind":"profile","name":"শখের বাশি","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 11:30:21 PM","last":"2 Oct, 11:30:21 PM"}],"total":1,"posts":["BGB"]},{"id":"p34","kind":"profile","name":"তামান্না প্রধান","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 6:35:40 AM","last":"3 Oct, 6:35:40 AM"}],"total":1,"posts":["BGB"]},{"id":"p35","kind":"profile","name":"চন্দ্র বিন্দু","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 7:41:57 PM","last":"2 Oct, 7:41:57 PM"}],"total":1,"posts":["BGB"]},{"id":"p36","kind":"profile","name":"محمد فريد الإسلام","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 12:25:00 AM","last":"3 Oct, 12:25:00 AM"}],"total":1,"posts":["BGB"]},{"id":"p37","kind":"profile","name":"Arian Ashik","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 12:28:36 PM","last":"3 Oct, 12:28:36 PM"}],"total":1,"posts":["BGB"]},{"id":"p38","kind":"profile","name":"Mahiya Mahi","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:20:42 PM","last":"2 Oct, 9:20:42 PM"}],"total":1,"posts":["BGB"]},{"id":"p39","kind":"profile","name":"আকাশের তারা","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:31:55 PM","last":"2 Oct, 9:31:55 PM"}],"total":1,"posts":["BGB"]},{"id":"p40","kind":"profile","name":"Belal Hosen","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 1:10:55 PM","last":"3 Oct, 1:10:55 PM"}],"total":1,"posts":["BGB"]},{"id":"p41","kind":"profile","name":"Md Mojibur Rahman","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 1:19:38 PM","last":"3 Oct, 1:19:38 PM"}],"total":1,"posts":["BGB"]},{"id":"p42","kind":"profile","name":"Abu Rayhan RM","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 2:20:09 PM","last":"3 Oct, 2:20:09 PM"}],"total":1,"posts":["BGB"]},{"id":"p43","kind":"profile","name":"Saleh Ahmmed","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 11:33:07 PM","last":"2 Oct, 11:33:07 PM"}],"total":1,"posts":["BGB"]},{"id":"p44","kind":"profile","name":"RS Robi","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:01:16 PM","last":"2 Oct, 9:01:16 PM"}],"total":1,"posts":["BGB"]},{"id":"p45","kind":"profile","name":"Faruk Hossain","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 8:30:17 PM","last":"2 Oct, 8:30:17 PM"}],"total":1,"posts":["BGB"]},{"id":"p46","kind":"profile","name":"Robiul Awal","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 8:52:54 PM","last":"2 Oct, 8:52:54 PM"}],"total":1,"posts":["BGB"]},{"id":"p47","kind":"profile","name":"Md Shihabub Alam Pappu","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 2:18:58 PM","last":"3 Oct, 2:18:58 PM"}],"total":1,"posts":["BGB"]},{"id":"p48","kind":"profile","name":"Arif Khan","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 3:08:07 PM","last":"3 Oct, 3:08:07 PM"}],"total":1,"posts":["BGB"]},{"id":"p49","kind":"profile","name":"MD Jiaur Rahman","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 3:35:45 PM","last":"3 Oct, 3:35:45 PM"}],"total":1,"posts":["BGB"]},{"id":"p50","kind":"profile","name":"Sultan Mahmud","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 8:27:50 PM","last":"2 Oct, 8:27:50 PM"}],"total":1,"posts":["BGB"]},{"id":"p51","kind":"profile","name":"Masum Hasan","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:59:11 PM","last":"2 Oct, 9:59:11 PM"}],"total":1,"posts":["BGB"]},{"id":"p52","kind":"profile","name":"Maimun Farabi","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 8:42:58 PM","last":"2 Oct, 8:42:58 PM"}],"total":1,"posts":["BGB"]},{"id":"p53","kind":"profile","name":"Mustafijur Rahman","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 7:44:05 PM","last":"2 Oct, 7:44:05 PM"}],"total":1,"posts":["BGB"]},{"id":"p54","kind":"profile","name":"Rhayan Anik","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 9:33:16 AM","last":"3 Oct, 9:33:16 AM"}],"total":1,"posts":["BGB"]},{"id":"p55","kind":"profile","name":"Kawser Parvez","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 9:48:26 AM","last":"3 Oct, 9:48:26 AM"}],"total":1,"posts":["BGB"]},{"id":"p56","kind":"profile","name":"Sultan Ahamed","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:46:20 PM","last":"2 Oct, 9:46:20 PM"}],"total":1,"posts":["BGB"]},{"id":"p57","kind":"profile","name":"Ashraful Islam Badal","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:17:56 PM","last":"2 Oct, 9:17:56 PM"}],"total":1,"posts":["BGB"]},{"id":"p58","kind":"profile","name":"Mohammad Jalal Ahmed","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 10:32:24 PM","last":"2 Oct, 10:32:24 PM"}],"total":1,"posts":["BGB"]},{"id":"p59","kind":"profile","name":"Abdul Ahad","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 10:01:55 PM","last":"2 Oct, 10:01:55 PM"}],"total":1,"posts":["BGB"]},{"id":"p60","kind":"profile","name":"Aziz Khan","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:36:45 PM","last":"2 Oct, 9:36:45 PM"}],"total":1,"posts":["BGB"]},{"id":"p61","kind":"profile","name":"TK Topu","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 5:08:30 AM","last":"3 Oct, 5:08:30 AM"}],"total":1,"posts":["BGB"]},{"id":"p62","kind":"profile","name":"Abubakkar Khan","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 11:20:10 AM","last":"3 Oct, 11:20:10 AM"}],"total":1,"posts":["BGB"]},{"id":"p63","kind":"profile","name":"Md Rofiqul Islam Rofiq","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:41:57 PM","last":"2 Oct, 9:41:57 PM"}],"total":1,"posts":["BGB"]},{"id":"p64","kind":"profile","name":"Manik Roy","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:10:51 PM","last":"2 Oct, 9:10:51 PM"}],"total":1,"posts":["BGB"]},{"id":"p65","kind":"profile","name":"Tapan Mandal","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 8:49:35 PM","last":"2 Oct, 8:49:35 PM"}],"total":1,"posts":["BGB"]},{"id":"p66","kind":"profile","name":"S M Jia","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 8:17:14 PM","last":"2 Oct, 8:17:14 PM"}],"total":1,"posts":["BGB"]},{"id":"p67","kind":"profile","name":"Md Nasir Uddin","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 10:27:12 AM","last":"3 Oct, 10:27:12 AM"}],"total":1,"posts":["BGB"]},{"id":"p68","kind":"profile","name":"ZI H AD","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 9:14:33 PM","last":"2 Oct, 9:14:33 PM"}],"total":1,"posts":["BGB"]},{"id":"p69","kind":"profile","name":"Shimanto Sharma","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 11:01:38 PM","last":"2 Oct, 11:01:38 PM"}],"total":1,"posts":["BGB"]},{"id":"p70","kind":"profile","name":"Forkan Khan","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 11:56:20 AM","last":"3 Oct, 11:56:20 AM"}],"total":1,"posts":["BGB"]},{"id":"p71","kind":"profile","name":"Mohammad Mehedi Hasan","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 10:33:50 PM","last":"2 Oct, 10:33:50 PM"}],"total":1,"posts":["BGB"]},{"id":"p72","kind":"profile","name":"Robiul Islam Hridoy","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 8:59:41 PM","last":"2 Oct, 8:59:41 PM"}],"total":1,"posts":["BGB"]},{"id":"p73","kind":"profile","name":"Ãhâmmèd Sàkíl","url":"","links":[{"t":"B1","n":1,"first":"3 Oct, 12:48:08 AM","last":"3 Oct, 12:48:08 AM"}],"total":1,"posts":["BGB"]},{"id":"p74","kind":"profile","name":"Mɗ Pʀʌŋto Aʜɱɘɗ","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 10:08:48 PM","last":"2 Oct, 10:08:48 PM"}],"total":1,"posts":["BGB"]},{"id":"p75","kind":"profile","name":"শেষ সীমানা","url":"","links":[{"t":"B1","n":1,"first":"2 Oct, 11:28:23 PM","last":"2 Oct, 11:28:23 PM"}],"total":1,"posts":["BGB"]},{"id":"p76","kind":"profile","name":"Khalid Saifulla","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 6:27:13 PM","last":"2 Oct, 6:27:13 PM"}],"total":1,"posts":["BGB"]},{"id":"p77","kind":"profile","name":"Mahidul Islam Samim","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 6:44:34 PM","last":"2 Oct, 6:44:34 PM"}],"total":1,"posts":["BGB"]},{"id":"p78","kind":"profile","name":"Ibrahim Khokon","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 8:59:43 PM","last":"2 Oct, 8:59:43 PM"}],"total":1,"posts":["BGB"]},{"id":"p79","kind":"profile","name":"MD Emon Khan","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 10:18:45 PM","last":"2 Oct, 10:18:45 PM"}],"total":1,"posts":["BGB"]},{"id":"p80","kind":"profile","name":"Md Rayhan Akanda","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 9:00:38 PM","last":"2 Oct, 9:00:38 PM"}],"total":1,"posts":["BGB"]},{"id":"p81","kind":"profile","name":"MD Kabir Ahmed","url":"","links":[{"t":"B2","n":1,"first":"3 Oct, 12:24:45 AM","last":"3 Oct, 12:24:45 AM"}],"total":1,"posts":["BGB"]},{"id":"p82","kind":"profile","name":"MD Robin Hossen","url":"","links":[{"t":"B2","n":1,"first":"3 Oct, 7:11:31 AM","last":"3 Oct, 7:11:31 AM"}],"total":1,"posts":["BGB"]},{"id":"p83","kind":"profile","name":"Oli Ullah","url":"","links":[{"t":"B2","n":1,"first":"3 Oct, 12:15:28 AM","last":"3 Oct, 12:15:28 AM"}],"total":1,"posts":["BGB"]},{"id":"p84","kind":"profile","name":"Mamun Sorkar","url":"","links":[{"t":"B2","n":1,"first":"3 Oct, 9:50:34 AM","last":"3 Oct, 9:50:34 AM"}],"total":1,"posts":["BGB"]},{"id":"p85","kind":"profile","name":"Mahidul Islam Mridul","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 11:38:11 PM","last":"2 Oct, 11:38:11 PM"}],"total":1,"posts":["BGB"]},{"id":"p86","kind":"profile","name":"Mdmonerul Monerul","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 8:12:56 PM","last":"2 Oct, 8:12:56 PM"}],"total":1,"posts":["BGB"]},{"id":"p87","kind":"profile","name":"Wazed Ali","url":"","links":[{"t":"B2","n":1,"first":"3 Oct, 2:35:09 AM","last":"3 Oct, 2:35:09 AM"}],"total":1,"posts":["BGB"]},{"id":"p88","kind":"profile","name":"Alamgir Hossain","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 9:53:19 PM","last":"2 Oct, 9:53:19 PM"}],"total":1,"posts":["BGB"]},{"id":"p89","kind":"profile","name":"Nowshad Alli Nowshad Ali","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 9:24:50 PM","last":"2 Oct, 9:24:50 PM"}],"total":1,"posts":["BGB"]},{"id":"p90","kind":"profile","name":"MD Pikul MD Pikul","url":"","links":[{"t":"B2","n":1,"first":"3 Oct, 11:44:35 AM","last":"3 Oct, 11:44:35 AM"}],"total":1,"posts":["BGB"]},{"id":"p91","kind":"profile","name":"Shajahan Shajahan","url":"","links":[{"t":"B2","n":1,"first":"3 Oct, 8:43:01 AM","last":"3 Oct, 8:43:01 AM"}],"total":1,"posts":["BGB"]},{"id":"p92","kind":"profile","name":"Sumon Sultan","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 10:31:30 PM","last":"2 Oct, 10:31:30 PM"}],"total":1,"posts":["BGB"]},{"id":"p93","kind":"profile","name":"Abdul Malak","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 10:36:39 PM","last":"2 Oct, 10:36:39 PM"}],"total":1,"posts":["BGB"]},{"id":"p94","kind":"profile","name":"Siddik Bgb","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 9:19:01 PM","last":"2 Oct, 9:19:01 PM"}],"total":1,"posts":["BGB"]},{"id":"p95","kind":"profile","name":"Md Sojeb","url":"","links":[{"t":"B2","n":1,"first":"3 Oct, 8:57:44 AM","last":"3 Oct, 8:57:44 AM"}],"total":1,"posts":["BGB"]},{"id":"p96","kind":"profile","name":"MD Nazim Uddin","url":"","links":[{"t":"B2","n":1,"first":"3 Oct, 12:36:00 PM","last":"3 Oct, 12:36:00 PM"}],"total":1,"posts":["BGB"]},{"id":"p97","kind":"profile","name":"MD Ariful Islam Razu","url":"","links":[{"t":"B2","n":1,"first":"3 Oct, 1:17:19 PM","last":"3 Oct, 1:17:19 PM"}],"total":1,"posts":["BGB"]},{"id":"p98","kind":"profile","name":"Hridoy Khan","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 8:00:28 PM","last":"2 Oct, 8:00:28 PM"}],"total":1,"posts":["BGB"]},{"id":"p99","kind":"profile","name":"Sumon Mahmud Khan","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 10:26:41 PM","last":"2 Oct, 10:26:41 PM"}],"total":1,"posts":["BGB"]},{"id":"p100","kind":"profile","name":"Md Shakib Hossain","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 9:25:01 PM","last":"2 Oct, 9:25:01 PM"}],"total":1,"posts":["BGB"]},{"id":"p101","kind":"profile","name":"MD Sane","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 9:18:00 PM","last":"2 Oct, 9:18:00 PM"}],"total":1,"posts":["BGB"]},{"id":"p102","kind":"profile","name":"MD Murad","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 8:01:47 PM","last":"2 Oct, 8:01:47 PM"}],"total":1,"posts":["BGB"]},{"id":"p103","kind":"profile","name":"Azad Ali","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 7:43:20 PM","last":"2 Oct, 7:43:20 PM"}],"total":1,"posts":["BGB"]},{"id":"p104","kind":"profile","name":"Md Mahafike Sheikh","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 7:03:24 PM","last":"2 Oct, 7:03:24 PM"}],"total":1,"posts":["BGB"]},{"id":"p105","kind":"profile","name":"Shipon Miah","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 8:56:22 PM","last":"2 Oct, 8:56:22 PM"}],"total":1,"posts":["BGB"]},{"id":"p106","kind":"profile","name":"MD Abdul Hannan","url":"","links":[{"t":"B2","n":1,"first":"3 Oct, 9:08:52 AM","last":"3 Oct, 9:08:52 AM"}],"total":1,"posts":["BGB"]},{"id":"p107","kind":"profile","name":"Md Rayhan Hossen","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 9:23:20 PM","last":"2 Oct, 9:23:20 PM"}],"total":1,"posts":["BGB"]},{"id":"p108","kind":"profile","name":"Wazed Ali","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 9:12:45 PM","last":"2 Oct, 9:12:45 PM"}],"total":1,"posts":["BGB"]},{"id":"p109","kind":"profile","name":"Md Abu Sayed Musha","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 6:41:23 PM","last":"2 Oct, 6:41:23 PM"}],"total":1,"posts":["BGB"]},{"id":"p110","kind":"profile","name":"Ripon Hossain","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 7:41:38 PM","last":"2 Oct, 7:41:38 PM"}],"total":1,"posts":["BGB"]},{"id":"p111","kind":"profile","name":"Arif Mahmud","url":"","links":[{"t":"B2","n":1,"first":"3 Oct, 10:13:35 AM","last":"3 Oct, 10:13:35 AM"}],"total":1,"posts":["BGB"]},{"id":"p112","kind":"profile","name":"Enamul Haq Tuhin","url":"","links":[{"t":"B2","n":1,"first":"3 Oct, 6:52:34 AM","last":"3 Oct, 6:52:34 AM"}],"total":1,"posts":["BGB"]},{"id":"p113","kind":"profile","name":"Toha Sarkar","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 8:55:52 PM","last":"2 Oct, 8:55:52 PM"}],"total":1,"posts":["BGB"]},{"id":"p114","kind":"profile","name":"Emran Hossain","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 9:00:29 PM","last":"2 Oct, 9:00:29 PM"}],"total":1,"posts":["BGB"]},{"id":"p115","kind":"profile","name":"রঙ্গের চুরি ওলা","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 9:02:06 PM","last":"2 Oct, 9:02:06 PM"}],"total":1,"posts":["BGB"]},{"id":"p116","kind":"profile","name":"Md Abdul Karim","url":"","links":[{"t":"B2","n":1,"first":"2 Oct, 7:46:29 PM","last":"2 Oct, 7:46:29 PM"}],"total":1,"posts":["BGB"]},{"id":"p117","kind":"profile","name":"Shoharab Hossian","url":"","links":[{"t":"B2","n":1,"first":"3 Oct, 7:48:45 AM","last":"3 Oct, 7:48:45 AM"}],"total":1,"posts":["BGB"]},{"id":"p118","kind":"profile","name":"Rasel Resel","url":"","links":[{"t":"B3","n":1,"first":"2 Oct, 7:38:35 PM","last":"2 Oct, 7:38:35 PM"}],"total":1,"posts":["BGB"]},{"id":"p119","kind":"profile","name":"Md. Rashid","url":"","links":[{"t":"B3","n":1,"first":"2 Oct, 9:17:24 PM","last":"2 Oct, 9:17:24 PM"}],"total":1,"posts":["BGB"]},{"id":"p120","kind":"profile","name":"জীবনের গল্প","url":"","links":[{"t":"B3","n":1,"first":"2 Oct, 7:55:10 PM","last":"2 Oct, 7:55:10 PM"}],"total":1,"posts":["BGB"]},{"id":"p121","kind":"profile","name":"Harun Harun","url":"","links":[{"t":"B3","n":1,"first":"2 Oct, 7:54:36 PM","last":"2 Oct, 7:54:36 PM"}],"total":1,"posts":["BGB"]},{"id":"p122","kind":"profile","name":"Md Raihan Rana","url":"","links":[{"t":"B3","n":1,"first":"3 Oct, 10:10:10 AM","last":"3 Oct, 10:10:10 AM"}],"total":1,"posts":["BGB"]},{"id":"p123","kind":"profile","name":"SA K IB","url":"","links":[{"t":"B3","n":1,"first":"3 Oct, 7:50:02 AM","last":"3 Oct, 7:50:02 AM"}],"total":1,"posts":["BGB"]},{"id":"p124","kind":"profile","name":"Delowar Hossain","url":"","links":[{"t":"B3","n":1,"first":"2 Oct, 9:06:16 PM","last":"2 Oct, 9:06:16 PM"}],"total":1,"posts":["BGB"]},{"id":"p125","kind":"profile","name":"Milon Mahamud Ovi","url":"","links":[{"t":"B3","n":1,"first":"3 Oct, 7:42:23 AM","last":"3 Oct, 7:42:23 AM"}],"total":1,"posts":["BGB"]},{"id":"p126","kind":"profile","name":"S M Hanif Sikder","url":"","links":[{"t":"B3","n":1,"first":"2 Oct, 11:04:38 PM","last":"2 Oct, 11:04:38 PM"}],"total":1,"posts":["BGB"]},{"id":"p127","kind":"profile","name":"S Ak Ib","url":"","links":[{"t":"B3","n":1,"first":"2 Oct, 9:04:06 PM","last":"2 Oct, 9:04:06 PM"}],"total":1,"posts":["BGB"]},{"id":"p128","kind":"profile","name":"Md. Jamal Chaudhary","url":"","links":[{"t":"B3","n":1,"first":"3 Oct, 12:26:57 AM","last":"3 Oct, 12:26:57 AM"}],"total":1,"posts":["BGB"]},{"id":"p129","kind":"profile","name":"Md Juwel Rana","url":"","links":[{"t":"B3","n":1,"first":"3 Oct, 9:10:37 AM","last":"3 Oct, 9:10:37 AM"}],"total":1,"posts":["BGB"]},{"id":"p130","kind":"profile","name":"Sagor Ahamed","url":"","links":[{"t":"B3","n":1,"first":"3 Oct, 12:12:23 AM","last":"3 Oct, 12:12:23 AM"}],"total":1,"posts":["BGB"]},{"id":"p131","kind":"profile","name":"Azad Azad","url":"","links":[{"t":"B3","n":1,"first":"3 Oct, 11:43:00 AM","last":"3 Oct, 11:43:00 AM"}],"total":1,"posts":["BGB"]},{"id":"p132","kind":"profile","name":"Land Chakma Wrong Wrang","url":"","links":[{"t":"B3","n":1,"first":"2 Oct, 10:06:43 PM","last":"2 Oct, 10:06:43 PM"}],"total":1,"posts":["BGB"]},{"id":"p133","kind":"profile","name":"Jarin Fariya","url":"","links":[{"t":"B3","n":1,"first":"3 Oct, 1:06:42 AM","last":"3 Oct, 1:06:42 AM"}],"total":1,"posts":["BGB"]},{"id":"p134","kind":"profile","name":"Alamin Rohman","url":"","links":[{"t":"B3","n":1,"first":"3 Oct, 12:29:17 PM","last":"3 Oct, 12:29:17 PM"}],"total":1,"posts":["BGB"]},{"id":"p135","kind":"profile","name":"Shoriful Sharif","url":"","links":[{"t":"B3","n":1,"first":"3 Oct, 12:10:11 AM","last":"3 Oct, 12:10:11 AM"}],"total":1,"posts":["BGB"]},{"id":"p136","kind":"profile","name":"SHîf ËlÅhí SìÑã","url":"","links":[{"t":"B3","n":1,"first":"3 Oct, 12:40:12 PM","last":"3 Oct, 12:40:12 PM"}],"total":1,"posts":["BGB"]},{"id":"p137","kind":"profile","name":"Ak Azad","url":"","links":[{"t":"B3","n":1,"first":"3 Oct, 12:21:07 PM","last":"3 Oct, 12:21:07 PM"}],"total":1,"posts":["BGB"]},{"id":"p138","kind":"profile","name":"Nurul Islam","url":"","links":[{"t":"B3","n":1,"first":"2 Oct, 9:11:29 PM","last":"2 Oct, 9:11:29 PM"}],"total":1,"posts":["BGB"]},{"id":"p139","kind":"profile","name":"Jamil Sarkar","url":"","links":[{"t":"B3","n":1,"first":"2 Oct, 10:04:07 PM","last":"2 Oct, 10:04:07 PM"}],"total":1,"posts":["BGB"]},{"id":"p140","kind":"profile","name":"Sheikh Mehedi","url":"","links":[{"t":"B3","n":1,"first":"3 Oct, 2:09:34 PM","last":"3 Oct, 2:09:34 PM"}],"total":1,"posts":["BGB"]},{"id":"p141","kind":"profile","name":"MD Ismail Hosen","url":"","links":[{"t":"B3","n":1,"first":"2 Oct, 10:23:27 PM","last":"2 Oct, 10:23:27 PM"}],"total":1,"posts":["BGB"]},{"id":"p142","kind":"profile","name":"SA J IB","url":"","links":[{"t":"B3","n":1,"first":"3 Oct, 12:27:13 PM","last":"3 Oct, 12:27:13 PM"}],"total":1,"posts":["BGB"]},{"id":"p143","kind":"profile","name":"Nazmul H Shawon","url":"","links":[{"t":"B3","n":1,"first":"2 Oct, 9:01:24 PM","last":"2 Oct, 9:01:24 PM"}],"total":1,"posts":["BGB"]},{"id":"p144","kind":"profile","name":"Krish Roy","url":"","links":[{"t":"B3","n":1,"first":"3 Oct, 11:29:27 AM","last":"3 Oct, 11:29:27 AM"}],"total":1,"posts":["BGB"]},{"id":"p145","kind":"profile","name":"Md Akram Ali","url":"","links":[{"t":"B3","n":1,"first":"2 Oct, 10:00:01 PM","last":"2 Oct, 10:00:01 PM"}],"total":1,"posts":["BGB"]},{"id":"p146","kind":"profile","name":"MD Ibrahim","url":"","links":[{"t":"B3","n":1,"first":"2 Oct, 9:21:11 PM","last":"2 Oct, 9:21:11 PM"}],"total":1,"posts":["BGB"]},{"id":"p147","kind":"profile","name":"Md Robiul Islam","url":"","links":[{"t":"B3","n":1,"first":"3 Oct, 1:47:37 AM","last":"3 Oct, 1:47:37 AM"}],"total":1,"posts":["BGB"]},{"id":"p148","kind":"profile","name":"Mohammad Shihab","url":"","links":[{"t":"B3","n":1,"first":"2 Oct, 11:15:27 PM","last":"2 Oct, 11:15:27 PM"}],"total":1,"posts":["BGB"]},{"id":"p149","kind":"profile","name":"MD AR Ripon Sikder","url":"","links":[{"t":"B3","n":1,"first":"2 Oct, 9:43:14 PM","last":"2 Oct, 9:43:14 PM"}],"total":1,"posts":["BGB"]},{"id":"p150","kind":"profile","name":"MD Arif Billah","url":"","links":[{"t":"B3","n":1,"first":"3 Oct, 6:51:43 AM","last":"3 Oct, 6:51:43 AM"}],"total":1,"posts":["BGB"]},{"id":"p151","kind":"profile","name":"Mahabub Alam","url":"","links":[{"t":"B3","n":1,"first":"2 Oct, 9:49:30 PM","last":"2 Oct, 9:49:30 PM"}],"total":1,"posts":["BGB"]},{"id":"p152","kind":"profile","name":"Saiful Bashar","url":"","links":[{"t":"B3","n":1,"first":"2 Oct, 10:08:26 PM","last":"2 Oct, 10:08:26 PM"}],"total":1,"posts":["BGB"]},{"id":"p153","kind":"profile","name":"Raihan Uddin","url":"","links":[{"t":"B3","n":1,"first":"3 Oct, 12:17:56 PM","last":"3 Oct, 12:17:56 PM"}],"total":1,"posts":["BGB"]},{"id":"p154","kind":"profile","name":"Kashem Ahmed","url":"","links":[{"t":"B3","n":1,"first":"3 Oct, 12:18:18 AM","last":"3 Oct, 12:18:18 AM"}],"total":1,"posts":["BGB"]},{"id":"p155","kind":"profile","name":"Mehedi Hassan","url":"https://www.facebook.com/mehedi.hassan.681784","links":[{"t":"J1","n":1,"first":"3 Oct, 9:37:39 AM","last":"3 Oct, 9:37:39 AM"}],"total":1,"posts":["JRA"]},{"id":"p156","kind":"profile","name":"Mohammad Nishad","url":"https://www.facebook.com/mohammad.nishad.975754","links":[{"t":"J1","n":1,"first":"3 Oct, 1:38:46 PM","last":"3 Oct, 1:38:46 PM"}],"total":1,"posts":["JRA"]},{"id":"p157","kind":"profile","name":"Nazmul Hasan","url":"https://www.facebook.com/N.hasan.99","links":[{"t":"J1","n":1,"first":"3 Oct, 12:08:37 PM","last":"3 Oct, 12:08:37 PM"}],"total":1,"posts":["JRA"]},{"id":"p158","kind":"profile","name":"Sohan S. Khandakar","url":"https://www.facebook.com/sohankhadaker.sani","links":[{"t":"J1","n":1,"first":"3 Oct, 12:38:21 PM","last":"3 Oct, 12:38:21 PM"}],"total":1,"posts":["JRA"]},{"id":"p159","kind":"profile","name":"Juel Rana","url":"https://www.facebook.com/juel.rana.851700","links":[{"t":"J1","n":1,"first":"3 Oct, 6:29:31 PM","last":"3 Oct, 6:29:31 PM"}],"total":1,"posts":["JRA"]},{"id":"p160","kind":"profile","name":"Mahabub Alom","url":"https://www.facebook.com/mahabub.alom.955922","links":[{"t":"J1","n":1,"first":"3 Oct, 3:00:04 PM","last":"3 Oct, 3:00:04 PM"}],"total":1,"posts":["JRA"]},{"id":"p161","kind":"profile","name":"Md Juel Rana","url":"https://www.facebook.com/mdjualrana.islam","links":[{"t":"J1","n":1,"first":"3 Oct, 1:42:13 PM","last":"3 Oct, 1:42:13 PM"}],"total":1,"posts":["JRA"]},{"id":"p162","kind":"profile","name":"Abdur Rahman","url":"https://www.facebook.com/abdur.rahman.389132","links":[{"t":"J1","n":1,"first":"3 Oct, 1:50:41 PM","last":"3 Oct, 1:50:41 PM"}],"total":1,"posts":["JRA"]},{"id":"p163","kind":"profile","name":"Md Samiul Islam","url":"https://www.facebook.com/md.samiul.islam.299058","links":[{"t":"J1","n":1,"first":"3 Oct, 4:14:13 PM","last":"3 Oct, 4:14:13 PM"}],"total":1,"posts":["JRA"]},{"id":"p164","kind":"profile","name":"Safiul Islam Sumon","url":"https://www.facebook.com/people/Safiul-Islam-Sumon/pfbid0iXVbZHeMo9X2yBuX1kkJcrVRcaMVfoPonegp6MpCAijnyGEhjDiXvuDJTnozmrFZl/","links":[{"t":"J1","n":1,"first":"3 Oct, 1:09:36 PM","last":"3 Oct, 1:09:36 PM"}],"total":1,"posts":["JRA"]},{"id":"p165","kind":"profile","name":"Tushar Kunti Dey","url":"https://www.facebook.com/tushar.kuntidey","links":[{"t":"J1","n":1,"first":"3 Oct, 7:03:23 PM","last":"3 Oct, 7:03:23 PM"}],"total":1,"posts":["JRA"]},{"id":"p166","kind":"profile","name":"Aminul Islam","url":"https://www.facebook.com/people/Aminul-Islam/pfbid034QXrJbbcFR4P2Pv518e2UdTKEGsqvGkjjkARBWyjzyYzGvdzQLtVgo5JiwMhBsmcl/","links":[{"t":"J1","n":1,"first":"3 Oct, 1:06:21 PM","last":"3 Oct, 1:06:21 PM"}],"total":1,"posts":["JRA"]},{"id":"p167","kind":"profile","name":"MD Rimon Sheikh","url":"https://www.facebook.com/md.rimon.sheikh.582400","links":[{"t":"J1","n":1,"first":"3 Oct, 2:56:25 PM","last":"3 Oct, 2:56:25 PM"}],"total":1,"posts":["JRA"]},{"id":"p168","kind":"profile","name":"Absar Rifat","url":"","links":[{"t":"J1","n":1,"first":"3 Oct, 7:07:29 PM","last":"3 Oct, 7:07:29 PM"}],"total":1,"posts":["JRA"]},{"id":"p169","kind":"profile","name":"রোদেলা আকাশ রোদেলা আকাশ","url":"https://www.facebook.com/people/%E0%A6%B0%E0%A7%8B%E0%A6%A6%E0%A7%87%E0%A6%B2%E0%A6%BE-%E0%A6%86%E0%A6%95%E0%A6%BE%E0%A6%B6-%E0%A6%B0%E0%A7%8B%E0%A6%A6%E0%A7%87%E0%A6%B2%E0%A6%BE-%E0%A6%86%E0%A6%95%E0%A6%BE%E0%A6%B6/pfbid0SBmXaY49QP5frqa3F68UA5TjfnCtxSVxq2y3sTWdcoQyDMSufcLyxmscGwPjSVUMl/","links":[{"t":"J1","n":1,"first":"3 Oct, 4:50:02 PM","last":"3 Oct, 4:50:02 PM"}],"total":1,"posts":["JRA"]},{"id":"p170","kind":"profile","name":"Wasi Wafi","url":"","links":[{"t":"J1","n":1,"first":"3 Oct, 1:49:49 PM","last":"3 Oct, 1:49:49 PM"}],"total":1,"posts":["JRA"]},{"id":"p171","kind":"profile","name":"এম এ সাঈম","url":"https://www.facebook.com/ema.e.sa.ima","links":[{"t":"J1","n":1,"first":"3 Oct, 2:05:26 PM","last":"3 Oct, 2:05:26 PM"}],"total":1,"posts":["JRA"]},{"id":"p172","kind":"profile","name":"Babul Mullah","url":"https://www.facebook.com/people/Babul-Mullah/pfbid0vY9NU76hsDrKtRDfNCCmo9pmGbfyPX5spTHoMvkKaEq8gBpaG3et518Tvg76Qg9xl/","links":[{"t":"J1","n":1,"first":"3 Oct, 2:57:51 PM","last":"3 Oct, 2:57:51 PM"}],"total":1,"posts":["JRA"]},{"id":"p173","kind":"profile","name":"আজমিকা অনু","url":"https://www.facebook.com/people/%E0%A6%86%E0%A6%9C%E0%A6%AE%E0%A6%BF%E0%A6%95%E0%A6%BE-%E0%A6%85%E0%A6%A8%E0%A7%81/pfbid0DdSqewjA7ELdyLmRMq1yWV2Axv6tfHq75bNUcRquanjNvUdR2xXXrMNMCQ7mEDo7l/","links":[{"t":"J1","n":1,"first":"3 Oct, 2:37:14 PM","last":"3 Oct, 2:37:14 PM"}],"total":1,"posts":["JRA"]},{"id":"p174","kind":"profile","name":"Zia Zia","url":"https://www.facebook.com/zia.zia.108143","links":[{"t":"J1","n":1,"first":"3 Oct, 7:57:33 PM","last":"3 Oct, 7:57:33 PM"}],"total":1,"posts":["JRA"]},{"id":"p175","kind":"profile","name":"শেষ সীমানা","url":"https://www.facebook.com/people/%E0%A6%B6%E0%A7%87%E0%A6%B7-%E0%A6%B8%E0%A7%80%E0%A6%AE%E0%A6%BE%E0%A6%A8%E0%A6%BE/pfbid0HJd9TKL8SmpzdFpTtQrF8qVVAvk8UwoDULTmb8gskui4VqV9s8n9WEvgMH8Dr8FFl/","links":[{"t":"J1","n":1,"first":"3 Oct, 1:54:01 PM","last":"3 Oct, 1:54:01 PM"}],"total":1,"posts":["JRA"]},{"id":"p176","kind":"profile","name":"Shaon Ghosh Apu","url":"https://www.facebook.com/shawon.ghosh.5264","links":[{"t":"J1","n":1,"first":"3 Oct, 7:08:12 PM","last":"3 Oct, 7:08:12 PM"}],"total":1,"posts":["JRA"]},{"id":"p177","kind":"profile","name":"Jahir Khan","url":"https://www.facebook.com/jahir.khan.16121471","links":[{"t":"J1","n":1,"first":"3 Oct, 11:24:29 PM","last":"3 Oct, 11:24:29 PM"}],"total":1,"posts":["JRA"]},{"id":"p178","kind":"profile","name":"Chandon Kumar","url":"https://www.facebook.com/jcchandon.kumar","links":[{"t":"J1","n":1,"first":"3 Oct, 10:34:08 AM","last":"3 Oct, 10:34:08 AM"}],"total":1,"posts":["JRA"]},{"id":"p179","kind":"profile","name":"Md Zahidul Islam","url":"https://www.facebook.com/md.zahidul.islam.272467","links":[{"t":"J1","n":1,"first":"3 Oct, 9:41:26 AM","last":"3 Oct, 9:41:26 AM"}],"total":1,"posts":["JRA"]},{"id":"p180","kind":"profile","name":"MD Milon","url":"https://www.facebook.com/people/MD-Milon/pfbid02n4UocUPAv4T3m8h2XPW1GQkgezVk4tMXACJ4ZaFtHcmSNyuBNyEbMoHKjnnKnocPl/","links":[{"t":"J1","n":1,"first":"3 Oct, 10:08:01 AM","last":"3 Oct, 10:08:01 AM"}],"total":1,"posts":["JRA"]},{"id":"p181","kind":"profile","name":"Morshed Bgb","url":"https://www.facebook.com/morshed.bgb","links":[{"t":"J1","n":1,"first":"3 Oct, 3:03:52 PM","last":"3 Oct, 3:03:52 PM"}],"total":1,"posts":["JRA"]},{"id":"p182","kind":"profile","name":"রাব্বি ইসলাম","url":"https://www.facebook.com/people/%E0%A6%B0%E0%A6%BE%E0%A6%AC%E0%A7%8D%E0%A6%AC%E0%A6%BF-%E0%A6%87%E0%A6%B8%E0%A6%B2%E0%A6%BE%E0%A6%AE/pfbid0sWRe6n6EH5GoUmL9DCbZi7pLyRPjLYzP6ap9gwoTFr2AVX3JScqah2dsLnX42piol/","links":[{"t":"J1","n":1,"first":"3 Oct, 8:02:49 PM","last":"3 Oct, 8:02:49 PM"}],"total":1,"posts":["JRA"]},{"id":"p183","kind":"profile","name":"Nazedul Islam","url":"https://www.facebook.com/nazedul.islam.544438","links":[{"t":"J1","n":1,"first":"4 Oct, 8:49:33 AM","last":"4 Oct, 8:49:33 AM"}],"total":1,"posts":["JRA"]},{"id":"p184","kind":"profile","name":"Bhikuram Halder Bhikuram Halder","url":"https://www.facebook.com/bhikuram.halder.bhikuram.halder","links":[{"t":"J1","n":1,"first":"4 Oct, 9:37:54 AM","last":"4 Oct, 9:37:54 AM"}],"total":1,"posts":["JRA"]},{"id":"p185","kind":"profile","name":"Elius Hossen","url":"https://www.facebook.com/elius.hossen.446349","links":[{"t":"J1","n":1,"first":"4 Oct, 10:39:29 AM","last":"4 Oct, 10:39:29 AM"}],"total":1,"posts":["JRA"]},{"id":"p186","kind":"profile","name":"Ràjú Ïsläm","url":"https://www.facebook.com/Rajutkgbd","links":[{"t":"J1","n":1,"first":"4 Oct, 8:49:03 AM","last":"4 Oct, 8:49:03 AM"}],"total":1,"posts":["JRA"]},{"id":"p187","kind":"profile","name":"Md. Momin Uddin","url":"https://www.facebook.com/md.momin.uddin.197217","links":[{"t":"J1","n":1,"first":"4 Oct, 1:22:35 AM","last":"4 Oct, 1:22:35 AM"}],"total":1,"posts":["JRA"]},{"id":"p188","kind":"profile","name":"Anowar Anowar","url":"https://www.facebook.com/people/Anowar-Anowar/pfbid037BWTzZiWWUHiiW5VmgJgG7ipG2YSJqKtSDJFqjNXeYGuc1E1E2eNWJu8uwHE8bR9l/","links":[{"t":"J1","n":1,"first":"3 Oct, 7:55:28 PM","last":"3 Oct, 7:55:28 PM"}],"total":1,"posts":["JRA"]},{"id":"p189","kind":"profile","name":"Taj Ahammed","url":"https://www.facebook.com/people/Taj-Ahammed/pfbid035x5ue27uMXAvy2T438rePwampWCWo4ZceueGyriMAafQMp82xBQEaTZv7eHmv4J9l/","links":[{"t":"J1","n":11,"first":"3 Oct, 10:43:27 AM","last":"3 Oct, 10:43:38 AM"},{"t":"J3","n":3,"first":"3 Oct, 10:44:08 AM","last":"3 Oct, 10:44:10 AM"}],"total":14,"posts":["JRA"]},{"id":"p190","kind":"profile","name":"Border Watch 360","url":"https://www.facebook.com/people/Border-Watch-360/61594214733370/","links":[{"t":"J1","n":15,"first":"3 Oct, 10:39:14 AM","last":"3 Oct, 10:39:23 AM"}],"total":15,"posts":["JRA"]},{"id":"p191","kind":"profile","name":"Border Radar 24","url":"https://www.facebook.com/people/Border-Radar-24/61593879827978/","links":[{"t":"J1","n":15,"first":"3 Oct, 10:35:45 AM","last":"3 Oct, 10:38:15 AM"}],"total":15,"posts":["JRA"]},{"id":"p192","kind":"profile","name":"Border Pulse","url":"https://www.facebook.com/people/Border-Pulse/61594034950828/","links":[{"t":"J1","n":9,"first":"3 Oct, 10:32:45 AM","last":"3 Oct, 10:32:51 AM"}],"total":9,"posts":["JRA"]},{"id":"p193","kind":"profile","name":"তোমার জন্য","url":"https://www.facebook.com/people/%E0%A6%A4%E0%A7%8B%E0%A6%AE%E0%A6%BE%E0%A6%B0-%E0%A6%9C%E0%A6%A8%E0%A7%8D%E0%A6%AF/61593522212135/","links":[{"t":"J1","n":8,"first":"3 Oct, 10:23:09 AM","last":"3 Oct, 10:23:13 AM"}],"total":8,"posts":["JRA"]},{"id":"p194","kind":"profile","name":"Md Shamim Raza","url":"https://www.facebook.com/md.shamim.raza.307612","links":[{"t":"J2","n":1,"first":"3 Oct, 12:15:47 PM","last":"3 Oct, 12:15:47 PM"}],"total":1,"posts":["JRA"]},{"id":"p195","kind":"profile","name":"MD Mostafa","url":"https://www.facebook.com/md.mostafa.31508","links":[{"t":"J2","n":1,"first":"3 Oct, 10:27:23 AM","last":"3 Oct, 10:27:23 AM"}],"total":1,"posts":["JRA"]},{"id":"p196","kind":"profile","name":"Shahed Mahmud","url":"https://www.facebook.com/people/Shahed-Mahmud/pfbid024Z3yddNC6SfgYo6d2cnCx2T7sm2uS8QdE3kKvZM86F9HLb9UGeqhekRNhYKvVp8sl/","links":[{"t":"J2","n":3,"first":"3 Oct, 2:03:48 PM","last":"3 Oct, 7:02:17 PM"}],"total":3,"posts":["JRA"]},{"id":"p197","kind":"profile","name":"Aminul Islam","url":"https://www.facebook.com/aminul.islam.110970","links":[{"t":"J2","n":1,"first":"3 Oct, 12:27:58 PM","last":"3 Oct, 12:27:58 PM"}],"total":1,"posts":["JRA"]},{"id":"p198","kind":"profile","name":"R. Riaz M","url":"https://www.facebook.com/people/R-Riaz-M/pfbid0cd7vTvYuMo1DL8ozYmQjmGWcCPB8E5niL8UiSMVDQnxuJUnMkDSPDV5Aeypmkr22l/","links":[{"t":"J2","n":1,"first":"3 Oct, 12:37:06 PM","last":"3 Oct, 12:37:06 PM"}],"total":1,"posts":["JRA"]},{"id":"p199","kind":"profile","name":"Linkon Bro","url":"https://www.facebook.com/linkon.bgb53","links":[{"t":"J2","n":1,"first":"3 Oct, 11:26:15 AM","last":"3 Oct, 11:26:15 AM"}],"total":1,"posts":["JRA"]},{"id":"p200","kind":"profile","name":"Asaduzzaman Asaduzzaman","url":"https://www.facebook.com/people/Asaduzzaman-Asaduzzaman/pfbid02qHmw83kf4pqwzbiyJkWYWm46ArVLy18Xt79gQKrmV3JkGhtAsEdRCdxbi7xoptael/","links":[{"t":"J2","n":1,"first":"3 Oct, 6:56:34 PM","last":"3 Oct, 6:56:34 PM"}],"total":1,"posts":["JRA"]},{"id":"p201","kind":"profile","name":"Azad Hossain","url":"https://www.facebook.com/azad.hossain.358694","links":[{"t":"J2","n":1,"first":"3 Oct, 7:50:33 PM","last":"3 Oct, 7:50:33 PM"}],"total":1,"posts":["JRA"]},{"id":"p202","kind":"profile","name":"MD Mojibur Rahman","url":"https://www.facebook.com/md.mojibur.rahman.717720","links":[{"t":"J2","n":1,"first":"3 Oct, 12:29:46 PM","last":"3 Oct, 12:29:46 PM"}],"total":1,"posts":["JRA"]},{"id":"p203","kind":"profile","name":"Nannu Mia","url":"https://www.facebook.com/nannu.mia.547927","links":[{"t":"J2","n":1,"first":"3 Oct, 12:27:43 PM","last":"3 Oct, 12:27:43 PM"}],"total":1,"posts":["JRA"]},{"id":"p204","kind":"profile","name":"সানজিদা নুর","url":"https://www.facebook.com/people/%E0%A6%B8%E0%A6%BE%E0%A6%A8%E0%A6%9C%E0%A6%BF%E0%A6%A6%E0%A6%BE-%E0%A6%A8%E0%A7%81%E0%A6%B0/pfbid0N1YJX242HDrGHiDD2baSq2h1sWwt8yT63jkekGyehoXTwda57WgTs6hbuf8HVEAHl/","links":[{"t":"J2","n":1,"first":"3 Oct, 11:17:31 AM","last":"3 Oct, 11:17:31 AM"}],"total":1,"posts":["JRA"]},{"id":"p205","kind":"profile","name":"Rakib Sarkar","url":"https://www.facebook.com/rakib11048496","links":[{"t":"J2","n":1,"first":"3 Oct, 12:21:29 PM","last":"3 Oct, 12:21:29 PM"}],"total":1,"posts":["JRA"]},{"id":"p206","kind":"profile","name":"নীড় হারা পাখি","url":"https://www.facebook.com/imran.najer.3572","links":[{"t":"J2","n":1,"first":"3 Oct, 11:22:18 AM","last":"3 Oct, 11:22:18 AM"}],"total":1,"posts":["JRA"]},{"id":"p207","kind":"profile","name":"Singula Chakma","url":"https://www.facebook.com/people/Singula-Chakma/pfbid0QXLR8Lz3pGB5f8TPWJLrBwjBQdYjmhU9TUf99g5isCPsYj7FCA4SEZgca4znKq3fl/","links":[{"t":"J2","n":1,"first":"3 Oct, 10:44:32 AM","last":"3 Oct, 10:44:32 AM"}],"total":1,"posts":["JRA"]},{"id":"p208","kind":"profile","name":"Mst Tasmia","url":"https://www.facebook.com/Msttasmia946","links":[{"t":"J2","n":1,"first":"3 Oct, 10:38:07 AM","last":"3 Oct, 10:38:07 AM"}],"total":1,"posts":["JRA"]},{"id":"p209","kind":"profile","name":"MD Nazmul Hassan","url":"","links":[{"t":"J2","n":1,"first":"3 Oct, 1:15:43 PM","last":"3 Oct, 1:15:43 PM"}],"total":1,"posts":["JRA"]},{"id":"p210","kind":"profile","name":"Rasel Rasel","url":"https://www.facebook.com/rasel.rasel.969551","links":[{"t":"J2","n":1,"first":"3 Oct, 11:29:24 AM","last":"3 Oct, 11:29:24 AM"}],"total":1,"posts":["JRA"]},{"id":"p211","kind":"profile","name":"Sujon Mahamud","url":"https://www.facebook.com/sujon.mahamud.600911","links":[{"t":"J2","n":1,"first":"3 Oct, 12:16:16 PM","last":"3 Oct, 12:16:16 PM"}],"total":1,"posts":["JRA"]},{"id":"p212","kind":"profile","name":"Abîr Hôssaîn","url":"https://www.facebook.com/simantera.ratajaga.prahari","links":[{"t":"J2","n":2,"first":"3 Oct, 12:52:37 PM","last":"3 Oct, 1:38:24 PM"}],"total":2,"posts":["JRA"]},{"id":"p213","kind":"profile","name":"Mdnuruzaman Islam","url":"https://www.facebook.com/mdnuruzaman.islam","links":[{"t":"J2","n":1,"first":"3 Oct, 12:08:21 PM","last":"3 Oct, 12:08:21 PM"}],"total":1,"posts":["JRA"]},{"id":"p214","kind":"profile","name":"নীল আকাশ","url":"https://www.facebook.com/people/%E0%A6%A8%E0%A7%80%E0%A6%B2-%E0%A6%86%E0%A6%95%E0%A6%BE%E0%A6%B6/pfbid0UkjMiyWjhfM5AzGjMkbt8M6of5ezqsaVVmjNEt5dFGoPbGTcrb9ZMEUjb7x1mkgcl/","links":[{"t":"J2","n":1,"first":"3 Oct, 11:18:15 AM","last":"3 Oct, 11:18:15 AM"}],"total":1,"posts":["JRA"]},{"id":"p215","kind":"profile","name":"Ful koli","url":"https://www.facebook.com/people/Ful-koli/61593428316168/","links":[{"t":"J2","n":14,"first":"3 Oct, 11:05:18 AM","last":"3 Oct, 11:05:26 AM"}],"total":14,"posts":["JRA"]},{"id":"p216","kind":"profile","name":"Raisa Jahan","url":"https://www.facebook.com/people/Raisa-Jahan/61583559402971/","links":[{"t":"J3","n":1,"first":"3 Oct, 10:31:51 AM","last":"3 Oct, 10:31:51 AM"}],"total":1,"posts":["JRA"]},{"id":"p217","kind":"profile","name":"পাহাড়ের সৌন্দর্য","url":"https://www.facebook.com/people/%E0%A6%AA%E0%A6%BE%E0%A6%B9%E0%A6%BE%E0%A7%9C%E0%A7%87%E0%A6%B0-%E0%A6%B8%E0%A7%8C%E0%A6%A8%E0%A7%8D%E0%A6%A6%E0%A6%B0%E0%A7%8D%E0%A6%AF/61593563699724/","links":[{"t":"J3","n":26,"first":"3 Oct, 10:57:50 AM","last":"3 Oct, 10:58:07 AM"}],"total":26,"posts":["JRA"]},{"id":"p218","kind":"profile","name":"Hasna Hena","url":"https://www.facebook.com/people/Hasna-Hena/pfbid02911KpL3ruSpUPPrmsPdTGkoGXzVa5g8JWg8GfGVnjviPRDLGxzGTKZDbegPvapeNl/","links":[{"t":"J3","n":6,"first":"3 Oct, 11:01:15 AM","last":"3 Oct, 11:01:21 AM"}],"total":6,"posts":["JRA"]},{"id":"p219","kind":"profile","name":"Md. Shafiqul Islam","url":"https://www.facebook.com/md.shafiqul.islam.663654","links":[{"t":"J3","n":1,"first":"3 Oct, 11:15:37 AM","last":"3 Oct, 11:15:37 AM"}],"total":1,"posts":["JRA"]}],"source":"Data: Facebook comments carrying the three most-copied texts under each post, 2 to 4 October 2026, Dhaka time. Accounts are identified by profile link where the data has one."};
+
+// light by default so the embed matches most news pages; ?theme=dark|auto overrides
+(function () {
+  const t = new URLSearchParams(location.search).get('theme');
+  const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+})();
+
+const NS = 'http://www.w3.org/2000/svg';
+const $ = id => document.getElementById(id);
+const el = (tag, attrs, parent, text) => {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (text != null) n.textContent = text;
+  if (parent) parent.appendChild(n);
+  return n;
+};
+const h = (tag, cls, text, parent) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  if (parent) parent.appendChild(n);
+  return n;
+};
+const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+
+const POSTS = { BGB: 'Official BGB post', JRA: 'JRA post' };
+const textById = Object.fromEntries(DATA.texts.map(t => [t.id, t]));
+const profiles = DATA.profiles.map(p => ({
+  ...p,
+  r: 3.6 + 2.5 * Math.sqrt(p.total),
+  color: p.posts.length > 1 ? 'both' : p.posts[0],
+  multi: p.links.length > 1
+}));
+// names are printed for the heavy repeaters and for profiles that tie two comments together
+for (const p of profiles) p.named = p.total >= 6 || p.multi;
+const LABEL_SIDE = rank => rank === 3 ? -1 : 1;
+
+const svg = $('svg');
+svg.setAttribute('aria-label', profiles.length + ' Facebook profiles, linked when they posted the identical comment under the ' +
+  POSTS.BGB + ' or the ' + POSTS.JRA + '. Bigger circles posted more comments.');
+
+// ---- layout: one 440x450 block per post; side by side when wide, stacked when narrow
+const BLOCK = { centers: [[220, 150], [112, 345], [328, 345]], w: 440, h: 450 };
+let clusters = [], view = { w: 920, h: 480 }, offsets = {}, portrait = null;
+
+function rng(seed) {
+  return () => {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function layout(isPortrait) {
+  view = isPortrait ? { w: 440, h: 950 } : { w: 920, h: 480 };
+  offsets = { BGB: [0, 0], JRA: isPortrait ? [0, 470] : [480, 0] };
+  clusters = DATA.texts.map(t => {
+    const [bx, by] = BLOCK.centers[t.rank - 1], [ox, oy] = offsets[t.post];
+    return { ...t, x: bx + ox, y: by + oy, members: [] };
+  });
+  const at = Object.fromEntries(clusters.map(c => [c.id, c]));
+  const rand = rng(11);
+
+  for (const p of profiles) {
+    const cs = p.links.map(l => at[l.t]);
+    cs.forEach(c => c.members.push(p));
+    p.tx = cs.reduce((s, c) => s + c.x, 0) / cs.length;
+    p.ty = cs.reduce((s, c) => s + c.y, 0) / cs.length;
+    // heavy repeaters drift to the side of the cluster where their names are printed
+    if (p.named && !p.multi) p.tx += LABEL_SIDE(cs[0].rank) * 30;
+    const a = rand() * Math.PI * 2, d = rand() * 70;
+    p.x = p.tx + Math.cos(a) * d; p.y = p.ty + Math.sin(a) * d;
+  }
+  // pull every profile to its comment's centre, then push overlapping circles apart: a packed cluster
+  const STEPS = 460;
+  for (let s = 0; s < STEPS; s++) {
+    const pull = s < STEPS - 40 ? 0.06 : 0;
+    for (const p of profiles) { p.x += (p.tx - p.x) * pull; p.y += (p.ty - p.y) * pull; }
+    for (let pass = 0; pass < 2; pass++) {
+      for (let i = 0; i < profiles.length; i++) {
+        const a = profiles[i];
+        for (let j = i + 1; j < profiles.length; j++) {
+          const b = profiles[j];
+          let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01;
+          const min = a.r + b.r + 2.6;
+          if (d < min) {
+            const k = (min - d) / d / 2; dx *= k; dy *= k;
+            a.x -= dx; a.y -= dy; b.x += dx; b.y += dy;
+          }
+        }
+      }
+    }
+  }
+  for (const c of clusters) {
+    const own = c.members.filter(p => !p.multi);
+    c.top = Math.min(...own.map(p => p.y - p.r));
+    c.bottom = Math.max(...own.map(p => p.y + p.r));
+    c.left = Math.min(...own.map(p => p.x - p.r));
+    c.right = Math.max(...own.map(p => p.x + p.r));
+  }
+}
+
+// every pair of profiles that posted the same comment is joined by one arc
+function arc(a, b) {
+  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, k = 0.3;
+  const cx = mx - (b.y - a.y) * k, cy = my + (b.x - a.x) * k;
+  return `M${a.x.toFixed(1)},${a.y.toFixed(1)}Q${cx.toFixed(1)},${cy.toFixed(1)} ${b.x.toFixed(1)},${b.y.toFixed(1)}`;
+}
+function edgeClass(a, b, post) { return a.color === 'both' || b.color === 'both' ? 'both' : post; }
+
+let gFocus, baseEdges = [];
+function render() {
+  svg.textContent = '';
+  svg.setAttribute('viewBox', `0 0 ${view.w} ${view.h}`);
+  const gEdge = el('g', {}, svg);
+  gFocus = el('g', {}, svg);
+  const gNode = el('g', {}, svg), gText = el('g', {}, svg);
+
+  const paths = { BGB: '', JRA: '', both: '' };
+  for (const c of clusters) {
+    for (let i = 0; i < c.members.length; i++) {
+      for (let j = i + 1; j < c.members.length; j++) paths[edgeClass(c.members[i], c.members[j], c.post)] += arc(c.members[i], c.members[j]);
+    }
+  }
+  baseEdges = ['BGB', 'JRA', 'both'].map(k => el('path', { class: 'edges e-' + k, d: paths[k] }, gEdge));
+
+  // big circles first so small ones are never hidden under them
+  for (const p of [...profiles].sort((a, b) => b.r - a.r)) p.dot = el('circle', { class: 'node c-' + p.color, cx: p.x, cy: p.y, r: p.r }, gNode);
+
+  for (const post in POSTS) {
+    const [ox, oy] = offsets[post];
+    el('text', { class: 'post', x: ox + BLOCK.w / 2, y: oy + 22 }, gText, POSTS[post]);
+  }
+  for (const c of clusters) {
+    const above = c.rank === 1, y = above ? c.top - 26 : c.bottom + 18;
+    el('text', { class: 'cap-n', x: c.x, y }, gText, plural(c.profiles, 'profile') + ' · ' + plural(c.comments, 'comment'));
+    el('text', { class: 'cap-q', x: c.x, y: y + 14 }, gText, '“' + c.short + '”');
+  }
+  for (const p of profiles) p.label = p.leader = null;
+  // repeaters inside a cluster: names stacked in a column beside it, each tied to its circle by a leader
+  for (const c of clusters) {
+    const side = LABEL_SIDE(c.rank), x = side > 0 ? c.right + 12 : c.left - 12;
+    const named = c.members.filter(p => p.named && !p.multi).sort((a, b) => a.y - b.y);
+    let y = -Infinity;
+    const ys = named.map(p => (y = Math.max(p.y, y + 14)));
+    const shift = named.length ? (named.reduce((s, p) => s + p.y, 0) - ys.reduce((s, v) => s + v, 0)) / named.length : 0;
+    named.forEach((p, i) => {
+      const ly = ys[i] + shift;
+      p.leader = el('line', { class: 'leader', x1: p.x + side * p.r, y1: p.y, x2: x - side * 3, y2: ly }, gText);
+      p.label = el('text', { class: 'name', x, y: ly + 3.6, 'text-anchor': side > 0 ? 'start' : 'end' }, gText, p.name);
+    });
+  }
+  for (const p of profiles.filter(p => p.multi)) {
+    const [ox] = offsets[p.posts[0]];
+    const right = p.x >= ox + BLOCK.w / 2, w = p.name.length * 6;
+    const start = right ? p.x + p.r + 4 + w < view.w : p.x - p.r - 4 - w < 0;
+    p.label = el('text', { class: 'name', x: start ? p.x + p.r + 4 : p.x - p.r - 4, y: p.y + 3.6, 'text-anchor': start ? 'start' : 'end' }, gText, p.name);
+  }
+  el('text', { class: 'note', x: view.w / 2, y: view.h - 8 }, gText,
+    'Circle = one profile · bigger = more comments · line = same comment text');
+}
+
+// ---- hover / tap: nearest circle within reach, so the target is bigger than the dot
+const tip = $('tip'), chart = $('chart');
+let current = null;
+
+function pick(evt) {
+  const box = svg.getBoundingClientRect(), k = view.w / box.width;
+  const x = (evt.clientX - box.left) * k, y = (evt.clientY - box.top) * k;
+  let best = null, bestD = 8 * k;
+  for (const p of profiles) {
+    const d = Math.hypot(p.x - x, p.y - y) - p.r;
+    if (d < bestD) { best = p; bestD = d; }
+  }
+  return best;
+}
+
+function focus(p) {
+  gFocus.textContent = '';
+  const peers = new Set(p ? [p] : []);
+  if (p) {
+    for (const l of p.links) {
+      const c = clusters.find(c => c.id === l.t);
+      let d = '';
+      for (const q of c.members) if (q !== p) { peers.add(q); d += arc(p, q); }
+      el('path', { class: 'focus-edges e-' + (p.color === 'both' ? 'both' : c.post), d }, gFocus);
+    }
+  }
+  for (const e of baseEdges) e.classList.toggle('faded', !!p);
+  for (const q of profiles) {
+    q.dot.classList.toggle('dim', !!p && !peers.has(q));
+    q.dot.classList.toggle('hot', q === p);
+    for (const t of [q.label, q.leader]) if (t) t.classList.toggle('dim', !!p && !peers.has(q));
+  }
+}
+
+function fillTip(p) {
+  tip.textContent = '';
+  h('strong', '', p.name, tip);
+  h('div', 'sub', plural(p.total, 'comment') + ' · ' + p.posts.map(x => POSTS[x]).join(' and '), tip);
+  for (const l of p.links) {
+    const box = h('div', 'link', null, tip);
+    h('div', 'when', l.n > 1 ? 'Posted ' + l.n + ' times, ' + l.first + ' to ' + l.last : 'Posted once, ' + l.first, box);
+    h('div', 'quote', '“' + textById[l.t].en + '”', box);
+  }
+}
+
+function showTip(p, evt) {
+  if (p !== current) { current = p; fillTip(p); focus(p); }
+  tip.style.display = 'block';
+  const box = chart.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
+  let x = evt.clientX - box.left + 14, y = evt.clientY - box.top + 14;
+  if (x + tw > box.width - 4) x = evt.clientX - box.left - tw - 14;
+  if (y + th > box.height - 4) y = evt.clientY - box.top - th - 14;
+  tip.style.left = Math.max(4, x) + 'px';
+  tip.style.top = Math.max(4, y) + 'px';
+}
+function hideTip() {
+  if (!current) return;
+  current = null; tip.style.display = 'none'; focus(null);
+}
+svg.addEventListener('pointermove', e => { const p = pick(e); p ? showTip(p, e) : hideTip(); svg.style.cursor = p ? 'pointer' : ''; });
+svg.addEventListener('pointerdown', e => { const p = pick(e); p ? showTip(p, e) : hideTip(); });
+svg.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hideTip(); });
+
+// ---- responsive: re-run the layout only when crossing the breakpoint; report height to the host page
+function fit() {
+  const p = chart.clientWidth < 620;
+  if (p !== portrait) { portrait = p; current = null; tip.style.display = 'none'; layout(p); render(); }
+  if (window.parent !== window) window.parent.postMessage({ type: 'embed-height', id: 'cib-network', height: document.documentElement.scrollHeight }, '*');
+}
+addEventListener('resize', fit);
+fit();
+</script>
+</body>
+</html>

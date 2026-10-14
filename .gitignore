@@ -1,6 +1,5 @@
 # raw data and generated pages carry real people's names and profile links
 *.xlsx
-embeds/
 site/
 # not for the repo
 Gify/
