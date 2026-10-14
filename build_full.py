@@ -20,6 +20,20 @@ MIN_USES = 5        # a text counts as copied once it appears in this many comme
 MIN_LENGTH = 40     # shorter phrases ("Good job") repeat by chance, so they are left out
 LABEL_FROM = 13     # accounts with at least this many copied comments get their name printed
 TRANSLATIONS = os.path.join(HERE, 'CiB Network BGB.xlsx')
+# the report's narratives, matched by keyword in this order; a text that matches none is general praise for BGB.
+# Keyword sorting is rough: check the result (python3 build_full.py --narratives) before publishing.
+NARRATIVES = [
+    ('story',  ['পিলখানা', 'সেলাই', 'রিকশা', '২২৫৮', '২,২৫৮', 'ড্রোন', 'মিয়ানমার', '২৭১', 'স্কোয়াড', 'পদ সৃষ্টি', 'আহত', 'মাথায়', 'গল্প', 'অভিজ্ঞতা']),
+    ('july',   ['জুলাই', 'অভ্যুত্থান', 'আন্দোলন', 'সংযম']),
+    ('attack', ['উদ্দেশ্য', 'প্রণোদিত', 'প্রনোদিত', 'ভিত্তিহীন', 'বানোয়াট', 'অপপ্রচার', 'মিথ্যা', 'গুজব', 'নিন্দা', 'ষড়যন্ত্র', 'অসত্য',
+                'বিভ্রান্ত', 'নেত্র', 'হেয়', 'কালিমা', 'ক্ষুণ্ন', 'অপচেষ্টা', 'প্রোপাগান্ডা']),
+    ('dg',     ['মহাপরিচালক', 'মহা পরিচালক', 'ডিজি', 'স্যার', 'সর্বশ্রেষ্ঠ', 'নেতৃত্ব']),
+    ('july',   ['মানবিক', 'মানবতা', 'মানব সেবা', 'মানবসেবা', 'বিপদ', 'দুঃসময়', 'দুঃসময়', 'সংকট', 'বিপন্ন']),
+]
+
+
+def narrative(text):
+    return next((name for name, words in NARRATIVES if any(w in text for w in words)), 'praise')
 
 
 def norm(text):
@@ -361,10 +375,17 @@ def build(xlsx):
     texts = []
     for t, i in index.items():
         rows = [c for c in comments if c['text'] == t]
-        texts.append({'i': i, 'bn': t, 'en': english.get(t, ''), 'comments': len(rows),
+        texts.append({'i': i, 'bn': t, 'en': english.get(t, ''), 'comments': len(rows), 'nar': narrative(t),
                       'profiles': len({c['key'] for c in rows}),
                       'on': {p: len({c['key'] for c in rows if c['post'] == p}) for p in SHEETS.values()},
                       'jra_share': sum(c['post'] == 'JRA' for c in rows) / len(rows)})
+    # copied comments that landed in the same second: [minute, [account, ...]], one entry per comment
+    stamps = collections.defaultdict(list)
+    for i, a in enumerate(accounts):
+        for w, _, _ in a['events']:
+            stamps[w.replace(microsecond=0)].append(i)
+    sync = [[minutes(w), who] for w, who in sorted(stamps.items()) if len(who) > 1]
+
     width, height = layout(accounts, texts)
     notes = annotate(accounts, texts)
     story = tell(accounts, texts, load_post_times(), minutes)
@@ -375,7 +396,7 @@ def build(xlsx):
 
     posts = collections.Counter(p for a in accounts for p in (['both'] if len(a['posts']) > 1 else a['posts']))
     return {
-        'w': width, 'h': height, 'texts': texts, 'accounts': accounts, 'notes': notes, 'story': story,
+        'w': width, 'h': height, 'texts': texts, 'accounts': accounts, 'notes': notes, 'story': story, 'sync': sync,
         't0': int(start.replace(tzinfo=dt.timezone.utc).timestamp() * 1000),   # Dhaka wall-clock, read back with UTC getters
         'posted': {p: minutes(w) for p, w in load_post_times().items()},
         'counts': {'BGB': posts['BGB'], 'JRA': posts['JRA'], 'both': posts['both'],
@@ -386,8 +407,16 @@ def build(xlsx):
 
 
 if __name__ == '__main__':
-    xlsx = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, 'BGB Chief .xlsx')
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    xlsx = args[0] if args else os.path.join(HERE, 'BGB Chief .xlsx')
     data = build(xlsx)
+    if '--narratives' in sys.argv:   # list every text under its narrative, to check the keyword sorting
+        for name in ('attack', 'dg', 'july', 'story', 'praise'):
+            print(f"\n== {name}")
+            for t in data['texts']:
+                if t['nar'] == name:
+                    print(f"  {t['comments']:>3}  {t['bn'][:100]}")
+        sys.exit()
     template = open(os.path.join(HERE, 'src', 'full.template.html'), encoding='utf-8').read()
     os.makedirs(os.path.join(HERE, 'embeds'), exist_ok=True)
     # the same graph twice, differing only in how the lines between clusters are drawn, so the two can be compared
@@ -399,4 +428,5 @@ if __name__ == '__main__':
         print(out)
     c = data['counts']
     print(f"{len(data['accounts'])} accounts, {len(data['texts'])} copied texts, "
-          f"{c['comments']} of {c['all_comments']} comments, canvas {data['w']}x{data['h']}")
+          f"{c['comments']} of {c['all_comments']} comments, canvas {data['w']}x{data['h']}, "
+          f"{len(data['sync'])} same-second moments ({sum(len(s[1]) for s in data['sync'])} comments)")

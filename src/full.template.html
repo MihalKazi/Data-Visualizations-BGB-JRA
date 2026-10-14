@@ -29,6 +29,10 @@
     --card-shadow: 0 14px 34px rgba(70, 50, 20, 0.13), 0 1px 3px rgba(70, 50, 20, 0.10);
     --tip-bg: #ffffff;
     --tip-shadow: 0 6px 22px rgba(0,0,0,0.16);
+    /* the four narratives of the copied texts, tinting each cluster's halo (validated: CVD-safe on this surface) */
+    --n-attack: #c27a1a; --n-dg: #2f6db3; --n-july: #2e8b62; --n-story: #8a5cb0; --n-praise: #8f9393;
+    --nar-halo: 0.17;
+    --spark: #d99a00;
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
@@ -51,6 +55,9 @@
     --card-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
     --tip-bg: #222424;
     --tip-shadow: 0 6px 22px rgba(0,0,0,0.6);
+    --n-attack: #b9802f; --n-dg: #5a8ad0; --n-july: #3fa577; --n-story: #a077c8; --n-praise: #7d8486;
+    --nar-halo: 0.2;
+    --spark: #f2c14e;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--surface); }
@@ -65,8 +72,24 @@
   .fan { stroke-dasharray: var(--fan) var(--fan); transition: stroke-dashoffset 800ms cubic-bezier(.45, 0, .7, .7), opacity 200ms linear; }
   .no-web .web { stroke-dashoffset: var(--web); }
   .no-fan .fan { stroke-dashoffset: var(--fan); }
-  .halo { fill-opacity: var(--halo); }
-  .h-mix { fill: var(--ink); fill-opacity: calc(var(--halo) * 0.6); }
+  .halo { fill-opacity: var(--nar-halo); }
+  .n-attack { fill: var(--n-attack); } .n-dg { fill: var(--n-dg); } .n-july { fill: var(--n-july); } .n-story { fill: var(--n-story); } .n-praise { fill: var(--n-praise); }
+  /* bridge lines: those crossing from the BGB side of the graph to the JRA side; drawn last and a little stronger */
+  .bridge { stroke-dasharray: var(--bridge) var(--bridge); transition: stroke-dashoffset 1100ms cubic-bezier(.45, 0, .6, .8), opacity 200ms linear; }
+  .no-bridge .bridge { stroke-dashoffset: var(--bridge); }
+  .edges.bridge { stroke-opacity: calc(var(--edge-alpha) * 1.9); stroke-width: 0.6; }
+  /* the replay's effects: same-second sparks, rapid-fire ripples, and their ticks on the timeline */
+  #fx { pointer-events: none; }
+  .spark { fill: none; stroke: var(--spark); stroke-width: 1.6; transform-box: fill-box; transform-origin: center; animation: spark 1100ms ease-out both; }
+  .spark-line { stroke: var(--spark); stroke-width: 1.6; stroke-linecap: round; animation: fadeline 1300ms ease-out both; }
+  .ripple { fill: none; stroke-width: 1; transform-box: fill-box; transform-origin: center; animation: ripple 750ms ease-out both; }
+  .ripple.c-BGB { stroke: var(--bgb); } .ripple.c-JRA { stroke: var(--jra); } .ripple.c-both { stroke: var(--both); }
+  .ripple { fill: none; }
+  @keyframes spark { from { transform: scale(1); opacity: 1; } to { transform: scale(2.6); opacity: 0; } }
+  @keyframes ripple { from { transform: scale(1); opacity: 0.7; } to { transform: scale(2.1); opacity: 0; } }
+  @keyframes fadeline { 0% { opacity: 0; } 15% { opacity: 0.95; } 100% { opacity: 0; } }
+  .stick { stroke: var(--spark); stroke-width: 1; transition: opacity 250ms; }
+  .playing .stick:not(.on) { opacity: 0; }
   #halos { transition: opacity 900ms ease; }
   .e-BGB { stroke: var(--edge-bgb); } .e-JRA { stroke: var(--edge-jra); } .e-both { stroke: var(--edge-both); }
   .link { fill: none; stroke-linecap: round; stroke-opacity: 0.55; }
@@ -224,9 +247,33 @@ const radius = n => 2.6 + 1.8 * Math.sqrt(n);
 const events = [];
 accounts.forEach(a => a.ev.forEach(e => events.push([e[0], a, e[1]])));
 events.sort((p, q) => p[0] - q[0]);
+// seconds in which two or more copied comments landed: [minute, [account, ...]]
+const SYNC = (DATA.sync || []).map(s => [s[0], s[1].map(i => accounts[i])]);
 const LAST = events[events.length - 1][0], HOURS = Math.ceil((LAST + 1) / 60);
 const hourly = Array.from({ length: HOURS }, () => [0, 0]);
 for (const e of events) hourly[Math.floor(e[0] / 60)][e[2]]++;
+// the replay's clock: time on screen follows activity, not hours. Each data minute costs W_BASE ms,
+// plus W_EVENT ms for each comment in it and W_SYNC ms for each same-second moment, so busy stretches play slowly
+// enough to watch the sparks and ripples, and quiet nights pass quickly
+const W_BASE = 0.6, W_EVENT = 4, W_SYNC = 25;
+const wcum = (function () {
+  const n = Math.ceil(LAST) + 2, w = new Float64Array(n + 1);
+  for (let i = 0; i < n; i++) w[i + 1] = W_BASE;
+  for (const e of events) w[Math.floor(e[0]) + 1] += W_EVENT;
+  for (const s of SYNC) w[Math.floor(s[0]) + 1] += W_SYNC;
+  for (let i = 1; i <= n; i++) w[i] += w[i - 1];
+  return w;
+})();
+function weightAt(m) {
+  const i = Math.max(0, Math.min(wcum.length - 2, Math.floor(m)));
+  return wcum[i] + (Math.min(m, wcum.length - 1) - i) * (wcum[i + 1] - wcum[i]);
+}
+function minuteAt(w) {
+  let lo = 0, hi = wcum.length - 1;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; wcum[mid] <= w ? lo = mid : hi = mid; }
+  const step = wcum[hi] - wcum[lo];
+  return lo + (step > 0 ? (w - wcum[lo]) / step : 0);
+}
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 function clock(minute, withTime) {
   const d = new Date(DATA.t0 + minute * 60000), hh = d.getUTCHours();
@@ -244,6 +291,7 @@ const KEY = [
   ['JRA', plural(C.JRA, 'profile'), ' on the JRA post · ' + C.jra_heavy + ' posted 10+ times'],
   ['both', plural(C.both, 'profile'), ' on both posts']
 ];
+const NARS = [['attack', 'Attacks the report'], ['dg', 'Praises the DG'], ['july', 'July / humanitarian image'], ['story', 'Pre-written story'], ['praise', 'General praise']];
 const NOTE = 'Bigger circle = more copied comments from that profile. ' + (FANS ? 'Lines join profiles that posted the same text.'
   : 'Lines inside a cluster join profiles that posted the same text. A long line shows an account that also posted another cluster’s text.');
 const MARGIN = 178;   // room beside the graph for the callouts when wide
@@ -264,7 +312,7 @@ function block(parent, cls, x, y, lines, lh, anchor) {
   return lines.length * lh;
 }
 
-let view = { w: 0, h: 0 }, portrait = null, gFocus, gStory, toView, baseEdges = [], notes = [], strip = null;
+let view = { w: 0, h: 0 }, portrait = null, gFocus, gStory, gFx, toView, baseEdges = [], notes = [], strip = null;
 
 const centre = t => toView({ x: DATA.texts[t].cx, y: DATA.texts[t].cy });
 const away = a => FANS ? [] : a.links.filter(l => l.t !== a.home && DATA.texts[l.t].cx != null);
@@ -283,7 +331,9 @@ function render(isPortrait) {
   view.w = innerW + 2 * m;
   const gHalo = el('g', { id: 'halos' }, svg), gEdge = el('g', { id: 'edges' }, svg);
   gFocus = el('g', {}, svg);
-  const gNode = el('g', {}, svg), gName = el('g', { id: 'names' }, svg), gText = el('g', {}, svg);
+  const gNode = el('g', {}, svg);
+  gFx = el('g', { id: 'fx' }, svg);
+  const gName = el('g', { id: 'names' }, svg), gText = el('g', {}, svg);
   gStory = el('g', {}, svg);
 
   // ---- what the picture is: headline, the finding in one line, colour key
@@ -300,7 +350,19 @@ function render(isPortrait) {
     el('tspan', {}, t, k[2]);
     if (row) x += widths[i] + 26; else y += 16;
   });
-  const top = view.top = y + (row ? 14 : 2);
+  // the halo colours: which narrative each cluster's text carries
+  y += row ? 18 : 2;
+  const nw = NARS.map(n => 18 + n[1].length * 5.6), ntotal = nw.reduce((s, w) => s + w, 0) + 16 * (NARS.length - 1);
+  const nrow = ntotal <= view.w - 16;
+  x = nrow ? (view.w - ntotal) / 2 : 12;
+  let col = 0;
+  NARS.forEach((n, i) => {
+    if (!nrow && col && x + nw[i] > view.w - 8) { x = 12; y += 15; col = 0; }   // narrow: wrap onto as many rows as needed
+    el('circle', { class: 'n-' + n[0], cx: x + 5, cy: y - 3.5, r: 5, 'fill-opacity': 0.55 }, gText);
+    el('text', { class: 'key', x: x + 14, y, style: 'font-size:10.5px' }, gText, n[1]);
+    x += nw[i] + 16; col++;
+  });
+  const top = view.top = y + 14;
 
   toView = p => ({ px: (isPortrait ? p.y : p.x) + m, py: (isPortrait ? p.x : p.y) + top });
   for (const a of accounts) Object.assign(a, toView(a));
@@ -309,15 +371,17 @@ function render(isPortrait) {
   // ---- a soft halo behind each cluster, in the colour of the post its text was used under
   DATA.texts.forEach((t, i) => {
     if (t.cx == null) return;
-    const c = centre(i), tone = t.jra_share === 0 ? 'c-BGB' : t.jra_share === 1 ? 'c-JRA' : 'h-mix';
-    el('circle', { class: 'halo ' + tone, cx: c.px, cy: c.py, r: t.cr + 3.5 }, gHalo);
+    const c = centre(i);
+    el('circle', { class: 'halo n-' + t.nar, cx: c.px, cy: c.py, r: t.cr + 3.5 }, gHalo);
   });
 
   // ---- every pair of profiles that posted the same text is joined by one arc.
   //      'web' lines stay inside a cluster; 'fan' lines run from an account to another cluster it also posted in.
-  const LAYERS = 5, layers = {}, reach = { web: 1, fan: 1 };
+  const LAYERS = 5, layers = {}, reach = { web: 1, fan: 1, bridge: 1 };
   let count = 0;
+  const side = q => DATA.texts[q.home].jra_share >= 0.5;
   const add = (kind, a, b) => {
+    if (kind === 'fan' && side(a) !== side(b)) kind = 'bridge';
     const key = kind + ' ' + (a.color === b.color ? a.color : 'both') + ' ' + (count++ % LAYERS);
     (layers[key] = layers[key] || []).push(arc(a, b));
     reach[kind] = Math.max(reach[kind], Math.hypot(a.px - b.px, a.py - b.py) * 1.12);
@@ -335,10 +399,11 @@ function render(isPortrait) {
   // (single-line mode) an account that also posted another cluster's text gets one line to that cluster, thicker the more often it did
   for (const a of accounts) for (const l of away(a)) {
     const c = centre(l.t);
-    reach.fan = Math.max(reach.fan, Math.hypot(a.px - c.px, a.py - c.py) * 1.12);
-    baseEdges.push(el('path', { class: 'link fan e-' + a.color, d: arc(a, c), 'stroke-width': linkWidth(l) }, gEdge));
+    const kind = side(a) !== (DATA.texts[l.t].jra_share >= 0.5) ? 'bridge' : 'fan';
+    reach[kind] = Math.max(reach[kind], Math.hypot(a.px - c.px, a.py - c.py) * 1.12);
+    baseEdges.push(el('path', { class: 'link ' + kind + ' e-' + a.color, d: arc(a, c), 'stroke-width': linkWidth(l) }, gEdge));
   }
-  svg.style.setProperty('--web', Math.ceil(reach.web)); svg.style.setProperty('--fan', Math.ceil(reach.fan));
+  for (const k in reach) svg.style.setProperty('--' + k, Math.ceil(reach[k]));
 
   // big circles first so small ones are never hidden under them
   for (const a of [...accounts].sort((p, q) => q.r - p.r)) a.dot = el('circle', { class: 'node c-' + a.color, cx: a.px, cy: a.py, r: a.r }, gNode);
@@ -379,9 +444,11 @@ function render(isPortrait) {
     el('path', { class: 'area ' + (k ? 'c-JRA' : 'c-BGB'), d: d + `L${sx1},${base}Z` }, gText);
   });
   el('line', { class: 'axis', x1: sx0, x2: sx1, y1: y + sh + 0.5, y2: y + sh + 0.5 }, gText);
+  // a tick under the axis for every second in which two or more copied comments landed together
+  const sticks = SYNC.map(s => el('line', { class: 'stick', x1: sx(s[0]), x2: sx(s[0]), y1: y + sh + 2.5, y2: y + sh + 8 }, gText));
   for (let i = 0; i < HOURS; i++) {
     const hour = new Date(DATA.t0 + i * 3600000).getUTCHours();
-    if (hour === 0 || hour === 12) el('text', { class: 'tick', x: sx(i * 60), y: y + sh + 13 }, gText, hour ? 'noon' : clock(i * 60));
+    if (hour === 0 || hour === 12) el('text', { class: 'tick', x: sx(i * 60), y: y + sh + 18 }, gText, hour ? 'noon' : clock(i * 60));
   }
   // post markers; a label that would run into the next one is lifted a row
   Object.entries(DATA.posted).sort((p, q) => p[1] - q[1]).forEach(([post, minute], i, all) => {
@@ -391,8 +458,8 @@ function render(isPortrait) {
     el('text', { class: 'mark-t', x: mx + 3, y: y - 4 - lift }, gText, label);
   });
   strip = { x: sx, x0: sx0, x1: sx1, top: y - 46, mark: y - 14, line: el('line', { id: 'playhead', x1: sx0, x2: sx0, y1: y - 26, y2: y + sh }, gText),
-            chip: el('text', { class: 'chip', x: sx0, y: y - 31 }, gText) };
-  y += sh + 22;
+            chip: el('text', { class: 'chip', x: sx0, y: y - 31 }, gText), sticks };
+  y += sh + 26;
 
   // ---- callouts: a numbered marker on the graph, and the note beside the graph (wide) or under it (narrow)
   notes = DATA.notes.map(n => ({ ...n, ...toView(n) }));
@@ -489,7 +556,35 @@ function spotlight(n) {
 // ---- the animation: comments arrive in time order, then the lines, then one pattern at a time
 let run = 0, playing = false;
 const wait = (ms, id) => new Promise(done => setTimeout(() => done(run === id), ms));
-const STAGES = ['no-edges', 'no-web', 'no-fan', 'no-notes', 'playing', 'settled'];
+const STAGES = ['no-edges', 'no-web', 'no-fan', 'no-bridge', 'no-notes', 'playing', 'settled'];
+
+// ---- replay effects. Each is a short-lived shape that removes itself; at most FX_MAX are alive at once
+const FX_MAX = 90;
+let fxAlive = 0;
+function fx(tag, attrs, life) {
+  if (fxAlive >= FX_MAX) return null;
+  fxAlive++;
+  const n = el(tag, attrs, gFx);
+  setTimeout(() => { n.remove(); fxAlive--; }, life);
+  return n;
+}
+// comments that landed in the same second: their circles flash together and a line joins the accounts
+function spark(group) {
+  const seen = new Set();
+  group.forEach((a, k) => {
+    const again = seen.has(a);   // the same account twice in one second: a second, later ring
+    seen.add(a);
+    const ring = fx('circle', { class: 'spark', cx: a.px, cy: a.py, r: radius(Math.max(1, a.seen)) + 1 }, 1400);
+    if (ring && again) ring.style.animationDelay = (k * 160) + 'ms';
+  });
+  const who = [...seen];
+  for (let k = 1; k < who.length; k++) fx('line', { class: 'spark-line', x1: who[k - 1].px, y1: who[k - 1].py, x2: who[k].px, y2: who[k].py }, 1400);
+}
+// an account commenting again within RAPID minutes of its last comment leaves a ripple
+const RAPID = 10 / 60;
+function ripple(a) {
+  fx('circle', { class: 'ripple c-' + a.color, cx: a.px, cy: a.py, r: radius(a.seen) }, 800);
+}
 
 // ---- story panels: each opens beside the accounts it is about, with a marker on them
 let openCards = [];
@@ -572,26 +667,33 @@ async function play() {
   const id = ++run;
   playing = true; hideTip(); hideCards(true); light(null);
   $('replay').textContent = 'Skip';
-  svg.classList.remove(...STAGES); svg.classList.add('no-edges', 'no-web', 'no-fan', 'no-notes', 'playing', 'snap');
+  svg.classList.remove(...STAGES); svg.classList.add('no-edges', 'no-web', 'no-fan', 'no-bridge', 'no-notes', 'playing', 'snap');
   frame(true);
-  for (const a of accounts) { a.seen = 0; a.dot.style.transform = 'scale(0)'; }
+  for (const a of accounts) { a.seen = 0; a.last = -1e9; a.dot.style.transform = 'scale(0)'; }
+  for (const t of strip.sticks) t.classList.remove('on');
   svg.getBoundingClientRect();   // apply the empty state at once, then let later changes ease in
   svg.classList.remove('snap');
 
   // the replay runs the clock forward to a given minute, adding each comment as its time comes
-  const span = events[Math.floor(events.length * 0.99)][0];
-  let minute = 0, next = 0, count = 0;
+  let minute = 0, next = 0, count = 0, nextSync = 0;
   // `atLeast` stretches a stretch of time so the panel that is open can be read while the comments keep arriving
   const advance = (to, atLeast) => new Promise(done => {
-    const from = minute, ms = Math.max(250, atLeast || 0, Math.min(1300, (to - from) / span * 4500)), began = performance.now();
+    const from = minute, w0 = weightAt(from), w1 = weightAt(to);
+    const ms = Math.max(250, atLeast || 0, Math.min(7000, w1 - w0)), began = performance.now();
     (function frame(now) {
       if (run !== id) return done(false);
       const t = Math.min(1, (now - began) / ms);
-      minute = from + (to - from) * t;
+      minute = t >= 1 ? to : w1 - w0 > 0.01 ? Math.max(from, Math.min(to, minuteAt(w0 + (w1 - w0) * t))) : from + (to - from) * t;
       while (next < events.length && events[next][0] <= minute) {
-        const a = events[next++][1];
+        const [at, a] = events[next++];
         count++;
         a.dot.style.transform = `scale(${(radius(++a.seen) / a.r).toFixed(3)})`;
+        if (at - a.last < RAPID) ripple(a);
+        a.last = at;
+      }
+      while (nextSync < SYNC.length && SYNC[nextSync][0] <= minute) {
+        spark(SYNC[nextSync][1]);
+        strip.sticks[nextSync++].classList.add('on');
       }
       // the clock rides along the timeline with the playhead
       const shown = Math.min(minute, LAST), x = strip.x(shown);
@@ -628,6 +730,7 @@ async function play() {
     if (c.reveal === 'edges') {   // the lines draw themselves: inside each cluster first, then out across the graph
       svg.classList.remove('no-edges', 'no-web');
       setTimeout(() => { if (run === id) svg.classList.remove('no-fan'); }, 400);
+      setTimeout(() => { if (run === id) svg.classList.remove('no-bridge'); }, 1300);   // the lines joining the two posts come last
     }
     if (c.spot && c.spot.text != null) light(new Set(members[c.spot.text]), null, c.spot.text);
     else if (c.spot) light(new Set(accounts.filter(a => a.color === c.spot.color)));
